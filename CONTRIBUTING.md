@@ -2,17 +2,16 @@
 
 PRs are very welcome. This list has requirements beyond the usual awesome-list conventions, because its value is in the two analytical axes, not in coverage alone.
 
-## 1. Keep the three sentence types separate
+## 1. Separate what a paper claims from what this list infers
 
-This is the hard requirement.
+Entries mix two kinds of statement, and they must stay distinguishable in the prose:
 
-| Marker | Meaning | Phrasing |
-|---|---|---|
-| **[Lit]** | Attributable to a specific paper | "X reports…" — give section or experimental setting where it matters |
-| **[Ana]** | This list's comparison under a unified frame | Must not be presented as the original paper's conclusion |
-| **[Rec]** | A recommendation or protocol proposal | "should report", "may serve as a protocol option" — never as current practice |
+- **What the paper reports** — its stated mechanism, setting, or measured result. Give the section or experimental setting where it matters.
+- **What this list infers** — the ZO operator assignment, the PAC class, and any comparison under the unified frame. These are readings, not the authors' conclusions, and must not be phrased as though they were.
 
-A PR that states an **[Ana]** reading as if it were the paper's own claim will be asked to revise.
+Recommendations ("should report", "may serve as a protocol option") must read as recommendations, never as descriptions of current practice.
+
+A PR presenting an inferred reading as the paper's own claim will be asked to revise.
 
 ## 2. Place the work on all three axes
 

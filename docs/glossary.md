@@ -30,7 +30,7 @@ All symbols, terms, and metric abbreviations used in this list, in one place. Te
 | $G$ | gate | Maps $(s_t, \tilde{s}_{t+1}; V_t)$ to $s_{t+1}$ via accept / reject / rollback. **Axis II** classifies $G$ |
 | $t$, $T$ | round index, horizon | Number of evolution rounds |
 | $D_t$ | proposal tasks | Tasks driving evidence collection in round $t$ |
-| $V_t$, $V_m$ | validation set | The set used for confirmation; $m = |V_m|$ |
+| $V_t$, $V_m$ | validation set | The set used for confirmation; $m = \lvert V_m \rvert$ |
 | $s_0$ | seed state | The Round-0 artifact. Must be fixed independently of $V$ (assumption A1) |
 
 ## Zeroth-order (Axis I)
@@ -115,22 +115,9 @@ All symbols, terms, and metric abbreviations used in this list, in one place. Te
 
 ---
 
-## Sentence-type markers
-
-Used throughout this repository. Mixing them is the failure mode this convention exists to prevent.
-
-| Marker | Meaning | Phrasing |
-|---|---|---|
-| **[Lit]** | A factual claim attributable to a specific paper | "X reports…", with section or setting where it matters |
-| **[Ana]** | This list's comparison under a unified frame | "Under this framing…", never presented as the paper's own conclusion |
-| **[Rec]** | A recommendation or protocol proposal | "should report", "may serve as a protocol option" — never as current practice |
-| **unverified / 待核实** | Gate strength or system detail not confirmed against the primary source | Must be marked, never inferred from level number or secondary summaries |
-
----
-
 ## Terms deliberately avoided
 
-**[Rec]** These appear in adjacent literature but are not used in this list without a directly supporting citation, because they carry no operational content here:
+These appear in adjacent literature but are not used in this list without a directly supporting citation, because they carry no operational content here:
 
 - **"zero-cost oracle"** — the feasibility check consumes compute; it consumes no *task rollouts*. Say the latter.
 - **"the harness has a gradient"** — textual feedback is semantic side-information on a zeroth-order query, not a verifiable derivative.
