@@ -1,6 +1,6 @@
 # Awesome Harness Optimization
 
-**A curated, theory-organized reading list on Harness Optimization (HarnessOpt): how the software system *around* a frozen LLM proposes edits to itself, and what it takes to confirm one is worth keeping.**
+**A curated, theory-organized reading list on Harness Optimization (HarnessOpt): how the software system *around* a frozen LLM edits itself under query-only access, and what it takes to justify keeping an edit.**
 
 [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
@@ -604,9 +604,9 @@ Also:
 ## Citation
 
 ```bibtex
-@misc{propose_and_confirm_2026,
-  title        = {Propose and Confirm: A Zeroth-Order and PAC View of Agent Harness Optimization},
-  author       = {Wei, Chenyang},
+@misc{harnessopt_zo_pac_2026,
+  title        = {A Zeroth-Order and PAC View of Agent Harness Optimization},
+  author       = {Wei, Chuyang and Shen, Yifei},
   year         = {2026},
   howpublished = {\url{https://github.com/Weichy9218/Awesome-Harness-Optimization}}
 }
