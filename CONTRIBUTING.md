@@ -4,10 +4,10 @@ PRs are very welcome. This list has requirements beyond the usual awesome-list c
 
 ## 1. Separate what a paper claims from what this list infers
 
-Entries mix two kinds of statement, and they must stay distinguishable in the prose:
+Entries mix three kinds of statement, and they must stay distinguishable in the prose:
 
 - **What the paper reports** — its stated mechanism, setting, or measured result. Give the section or experimental setting where it matters.
-- **What this list infers** — the ZO operator assignment, the PAC class, and any comparison under the unified frame. These are readings, not the authors' conclusions, and must not be phrased as though they were.
+- **What this list infers** — the ZO analogy, gate label, and any comparison under the unified frame. These are readings, not the authors' conclusions, and must not be phrased as though they were.
 
 Recommendations ("should report", "may serve as a protocol option") must read as recommendations, never as descriptions of current practice.
 
@@ -16,19 +16,20 @@ A PR presenting an inferred reading as the paper's own claim will be asked to re
 ## 2. Place the work on all three axes
 
 - **Level** (L0–L5) — what object is edited
-- **`[ZO: operator]`** — which operator role the proposal mechanism plays (see [`docs/zo-operator-map.md`](docs/zo-operator-map.md))
-- **`[PAC: class]`** — `open` / `same-set` / `independent` (see [`docs/audit-table.md`](docs/audit-table.md))
+- **`[ZO analogy: role]`** — which derivative-free role the proposal mechanism resembles (see [`docs/zo-operator-map.md`](docs/zo-operator-map.md))
+- **`[Gate: protocol]`** — `open`, `search-set`, `held-out`, `fresh test`, `human review`, `retrospective`, or `unverified` (see [`docs/audit-table.md`](docs/audit-table.md))
 
 ## 3. Rules specific to each axis
 
 **For a ZO operator assignment**, say whether the mechanism *implements* the operator or *plays its role*. On plain-text surfaces most operators exist only as analogies; label them as such. Never write that a text method **is** a continuous ZO estimator.
 
-**For a `[PAC: independent]` claim**, state:
+**For a `[Gate: held-out]` or `[Gate: fresh test]` claim**, state:
+
 - what the split actually is;
 - whether the set is reused across rounds;
 - whether a test result could have *stopped* the candidate.
 
-"Ran a test" is not independent confirmation. If the gate runs on clones or subsamples of the training failures, the correct class is `same-set`.
+"Ran a test" is not independent confirmation. If the gate runs on clones or subsamples of the training failures, use `search-set`.
 
 ## 4. Mark what you could not verify
 
@@ -36,8 +37,8 @@ If gate strength, split structure, or a triggering parameter is not confirmable 
 
 ## 5. Entry format
 
-```
-- **Name** — "Title". Authors. *Venue* Year. [[paper]](link) — one-line description tying it to HarnessOpt. `[ZO: operator]` `[PAC: class]`
+```text
+- **Name** — "Title". Authors. *Venue* Year. [[paper]](link) — one-line description tying it to HarnessOpt. `[ZO analogy: role]` `[Gate: protocol]`
 ```
 
 - Use `†` for preprints or very recent postings whose metadata may still change.
@@ -46,8 +47,8 @@ If gate strength, split structure, or a triggering parameter is not confirmable 
 
 ## 6. Scope
 
-The object being optimized must be **model-external state**, modified using **run-time feedback**, with the **base model frozen**. Harness *design* work and purely weight-side methods belong in §12 at most. L5 (joint harness + weights) is a boundary case, included but not core.
+The object being optimized must be **model-external state**, modified using **run-time feedback**, with the **base model frozen**. Harness *design* work and purely weight-side methods belong only in the boundary section (§6). L5 (joint harness + weights) is included as a boundary case, not as core HarnessOpt.
 
 ## 7. Corrections to the analysis are welcome
 
-If you think a ZO operator assignment is wrong, a PAC class is misjudged, or a proposition in [`docs/pac-stability.md`](docs/pac-stability.md) has an error or an unstated assumption — open an issue. Corrections to the analysis are more valuable than additional entries.
+If you think a ZO analogy is wrong, a gate protocol is misclassified, or a bound in [`docs/pac-stability.md`](docs/pac-stability.md) has an error or an unstated assumption, open an issue. Corrections to the analysis are more valuable than additional entries.

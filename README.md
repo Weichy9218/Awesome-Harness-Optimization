@@ -1,6 +1,6 @@
 # Awesome Harness Optimization
 
-**A curated, theory-organized reading list on Harness Optimization (HarnessOpt): how the software system *around* a frozen LLM edits itself under query-only access, and what it takes to justify keeping an edit.**
+**A reading list on Harness Optimization (HarnessOpt): how run-time evidence is used to modify the software system around a frozen language model, and how those modifications are evaluated before they persist.**
 
 [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
@@ -8,10 +8,13 @@
 
 **English** | [中文](README_zh.md)
 
-> **What makes this list different.** Existing lists organize self-improving agents by *what object gets edited* (prompt → memory → workflow → code). That axis is necessary but not sufficient: it tells you nothing about **how a modification proposal is formed under a gradient-free information structure**, or **whether an accepted modification is statistically justified**. This list adds those two orthogonal axes:
+> **Organization.** The list uses three complementary axes:
 >
-> - **[Axis I — Zeroth-Order (ZO) view](#axis-i--the-zeroth-order-view):** the optimizer can only *deploy a candidate, run tasks, and observe returns*. Which classical ZO operator does each method actually instantiate — and does the editable surface even admit that operator?
-> - **[Axis II — PAC / stability view](#axis-ii--pac-and-stability):** two non-interchangeable bounds govern HarnessOpt. Update stability ($\beta_{\exp}$) controls whether a single rollout can hijack the update; independent confirmation controls whether a selected candidate generalizes. Most published systems satisfy neither cleanly, and this list says *which one* each violates.
+> - **[Axis 0 — editable surface](#axis-0--the-editable-surface-l0l5):** what can change, from prompts to optimizer code.
+> - **[Axis I — query and proposal](#axis-i--the-zeroth-order-view):** what objective information and run evidence the proposer receives, and how it turns them into an edit.
+> - **[Axis II — validation](#axis-ii--pac-and-stability):** what data the gate uses, whether those data were reused adaptively, and what a reported score can support.
+>
+> “ZO operator” labels below are analytical analogies unless a method constructs the corresponding numerical estimator. “Held-out” is not synonymous with “independent” when the same set is reused for adaptive selection.
 
 ---
 
@@ -44,25 +47,29 @@
 
 ## Scope
 
-**Working definition.** Fix a base model $M$, a task distribution $\mathcal{D}$, and an external evaluation boundary. Let $s$ be *model-external* software state — prompts, context, memory, workflow graphs, tool interfaces, agent code, optimizer code. The harness executes a task $z$ as $\tau = H_s(M, z)$. **HarnessOpt** is any procedure that repeatedly (i) runs the system to collect evidence, (ii) proposes edits to $s$ from that evidence, and (iii) decides via some accept/reject/rollback rule which edits persist.
+Fix a base model $M$, a task distribution $\mathcal{D}$, and an external evaluation boundary. Let $s$ denote model-external software state: prompts, context, memory, workflow graphs, tool interfaces, agent code, or optimizer code. The harness executes task $z$ as $\tau = H_s(M,z)$.
+
+**HarnessOpt** is the repeated process of collecting run-time evidence, proposing an edit to $s$, and deciding what state persists. The persistence rule may be a genuine accept/reject gate or an unconditional write; the latter is classified as open loop.
 
 **In focus.** Work where model-external state is modified *using run-time feedback*, with base model frozen. This includes prompt optimization, self-evolving memory/skills, workflow search, self-modifying agent code, meta-optimizer code, and the evaluators/benchmarks such loops optimize against.
 
-**Boundary cases.** L5 (joint harness + weights) is included as a boundary, not as the core. Pure weight-side self-improvement (self-play, RLVR, synthetic data) and hand-authored harness *design* (ReAct, SWE-agent, MCP) are listed only in [§7](#6-related-surveys-and-boundaries) to mark the edge.
+**Boundary cases.** L5 (joint harness + weights) is included as a boundary, not as the core. Pure weight-side self-improvement (self-play, RLVR, synthetic data) and hand-authored harness *design* (ReAct, SWE-agent, MCP) are listed only in [§6](#6-related-surveys-and-boundaries) to mark the edge.
 
 ---
 
 ## The HarnessOpt Update Loop
 
-Four components, one update:
+Three operators define one state transition:
 
-$$
-\underbrace{\mathcal{E}_t = Q(s_t; D_t)}_{\text{collect evidence}}
-\qquad
-\underbrace{\tilde{s}_{t+1} = P(s_t, \mathcal{E}_t)}_{\text{propose edit}}
-\qquad
-\underbrace{s_{t+1} = G(s_t, \tilde{s}_{t+1}; V_t)}_{\text{gate: accept / reject / rollback}}
-$$
+```math
+\begin{aligned}
+\mathcal{E}_t &= Q(s_t;D_t),\\
+\widetilde{s}_{t+1} &= P(s_t,\mathcal{E}_t),\\
+s_{t+1} &= G(s_t,\widetilde{s}_{t+1};V_t).
+\end{aligned}
+```
+
+$Q$ collects evidence on proposal tasks $D_t$; $P$ proposes a candidate; $G$ decides what state persists after consulting validation data $V_t$. For an open-loop method, $G$ simply writes the proposal.
 
 ```mermaid
 flowchart LR
@@ -78,13 +85,13 @@ flowchart LR
     class B b;
 ```
 
-Three conditions define a HarnessOpt system; everything else is a *protocol option*, not part of the definition:
+Three conditions define the core scope:
 
 1. the base model and the external evaluation boundary are fixed for the round;
 2. edits target an explicitly delimited editable state set $\mathcal{S}_{\mathrm{edit}}$;
-3. candidates undergo some accept / reject / rollback treatment whose outcome affects later state.
+3. the result of the update affects later runs.
 
-> Allowlists, compile gates, smoke tests, independent validation, statistical dead-zones, and human review are *how well* a system does step 3 — they are the subject of [Axis II](#axis-ii--pac-and-stability), not entry requirements.
+Compile gates, smoke tests, held-out evaluation, human review, and rollback are protocol choices, not entry requirements.
 
 ---
 
@@ -92,7 +99,7 @@ Three conditions define a HarnessOpt system; everything else is a *protocol opti
 
 The object axis, kept as scaffolding for the two analytical axes. It answers **"what can be changed"** — not how, and not whether the change was justified. **The six rungs and their papers are in [§2](#2-the-editable-surface-l0l5), in one section.** What follows here is the part the level number hides.
 
-### Three discriminating sub-axes (the part the level number hides)
+### Three discriminating sub-axes
 
 The level of an editable object says little about the *actual* action space. Three properties do:
 
@@ -100,151 +107,202 @@ The level of an editable object says little about the *actual* action space. Thr
 |---|---|---|
 | **Write authority** | Does the agent write autonomously, or only after human review? | Determines whether the loop is closed at all |
 | **Persistence** | Ephemeral sandbox run, or committed to versioned state? | Determines whether an error can accumulate |
-| **Constraint enforcement** | Declared in the prompt, or enforced by permissions / sandbox / hidden evaluator / static checks? | Determines whether [PAC premise (iii)](#ii1-two-bounds-two-different-jobs) holds at all |
+| **Constraint enforcement** | Declared in a prompt, or enforced by permissions, a sandbox, a hidden evaluator, or static checks? | Determines whether the evaluation boundary is protected |
 
-> **Editable-surface size and gate strength are not conserved quantities.** A system whose surface covers control flow and executable code is *not* thereby more rigorously gated; some of the largest surfaces ship with the weakest confirmation. Do not infer gate strength from level number. See the [audit table](#4-validation-protocols-how-a-candidate-enters-persistent-state).
+Editable-surface size does not determine gate strength. Record write authority, persistence, and enforcement separately from L0–L5.
 
 ---
+
 ## Axis I — The Zeroth-Order View
 
-*Classification axis: **through what zeroth-order information structure does run evidence become a modification proposal?** Orthogonal to the object axis — the same operator appears at L0 and L4, and one level hosts several operators.*
+This axis records the information available to the proposer. It uses classical zeroth-order optimization as a reference, not as an equivalence claim.
 
 ### I.1 Why zeroth-order
 
-$\mathcal{S}_{\mathrm{edit}}$ is discrete text, programs, and file structure; $H_s \circ M$ is non-differentiable. So $\nabla_s f_M(s)$ is unavailable, where $f_M(s) = \mathbb{E}_{z \sim \mathcal{D}}[R(H_s(M,z))]$.
+Define expected return under a fixed base model:
 
-What makes a method zeroth-order is not that its variables are numeric. It is that **the optimizer obtains objective information only by querying an oracle**: deploy a candidate → run tasks → observe scores and traces → decide how to edit. A single run gives $Y(s,z) = R(H_s(M,z))$; the empirical mean estimates $f_M(s)$. Randomness comes from task sampling, model sampling, and environment execution — no explicit perturbation direction is ever constructed.
+```math
+f_M(s)=\mathbb{E}_{z\sim\mathcal{D}}\!\left[R\!\left(H_s(M,z)\right)\right].
+```
 
-**The one substantive departure from classical ZO.** The query returns semantics, not just a scalar:
+$\nabla_s f_M(s)$ is unavailable for two independent reasons, and they fail differently.
 
-$$
-\mathcal{E}_t = \{(z_i, \tau_i, R_i, \mathrm{feedback}_i)\}_{i=1}^{n_t}
-$$
+**Discreteness.** The editable state $s\in\mathcal{S}_{\mathrm{edit}}$ is text, programs, and file structures. Without an explicit continuous relaxation there is no ambient space in which $s+\mu u$ is defined, so the derivative is not defined either.
 
-Traces, error logs, stack traces, and test results localize failure and suggest what to edit. SkillOpt-Lite frames this as **language-mediated program compilation**: the editable state is a program, the rollout is its execution trace, the LLM is compiler and runtime.
+**Non-differentiable composition.** Even under a continuous relaxation of the state, the composition $H_s\circ M$ — tool calls, control flow, environment side effects, sampling, external exit codes — is not a differentiable map. This is the reason that closes the obvious escape route: embedding the text does not produce a differentiable objective, because the execution in between remains non-differentiable however the state is encoded. It is also why methods that do obtain a real gradient — GPTSwarm's edge-level REINFORCE over topology, ScoreFlow's Score-DPO relaxation, SEAL's RL loop — are boundary cases on this axis rather than instances of it.
 
-> **Insight 1.** Classical ZO perturbs blindly because it cannot inspect the function. HarnessOpt reads execution traces and debugs semantically — under the *same* query-only budget. **The gain is proposal quality, not oracle access.** Two things do not follow: semantic side-information does not lift the query-only constraint, and *a readable trace is not correct attribution*, let alone statistical evidence for acceptance. Reported step-level attribution accuracy is low, and regression prediction is markedly weaker than fix prediction.
+The objective can instead be estimated only by running a state on sampled tasks:
+
+```math
+Y(s,z)=R\!\left(H_s(M,z)\right),
+\qquad
+\widehat{f}_{D}(s)=\frac{1}{|D|}\sum_{z\in D}Y(s,z).
+```
+
+This is a zeroth-order **objective interface** because the optimizer observes function values rather than derivatives. Many HarnessOpt systems also receive traces, errors, tests, or textual feedback:
+
+```math
+\mathcal{E}_t=\{(z_i,\tau_i,R_i,\mathrm{feedback}_i)\}_{i=1}^{n_t}.
+```
+
+That side information is richer than a classical function-value oracle. It can improve proposal quality, but it does not make the text update a numerical gradient and does not validate the proposed edit.
 
 ### I.2 Proposal signals and their operators
 
-Formulas below express *comparison relations*, not implementations of continuous ZO estimators. SkillOpt's $B_m{=}8$ aggregates rollouts over several tasks; it does not apply eight numerical perturbations to one state.
+The second column names the classical derivative-free operator each engineering practice resembles. **It is an analogy, not an implementation claim:** SkillOpt's $B_m{=}8$ aggregates rollouts over eight *tasks*, and does not apply eight numerical perturbations to one state.
 
-| Signal type | Analytical form (analogy) | Engineering realization | Representative work |
+| Signal or constraint | Classical form (analogy, not implementation) | Engineering role | Representative work |
 |---|---|---|---|
-| **Scalar comparison** | $\widehat{\Delta} = \widehat{R}(s') - \widehat{R}(s)$ | Single-trace reflection; batch rollout; rank or keep elites by score | Reflexion, Voyager, APE, OPRO, DSPy, MIPROv2, GEPA, SkillOpt |
-| **Batch consensus** | $\frac{1}{b}\sum_i [f(s+\mu u_i) - f(s)]\,u_i$ | Aggregate a batch before proposing; require a cross-task reproducible pattern, not one anomaly | SkillOpt ($B_m{=}8$), SkillOpt-Lite, Trace2Skill, SkillForge, ExpeL, Self-Harness |
-| **Pairwise contrast** | $\widehat{\Delta} = \widehat{R}(s^+) - \widehat{R}(s^-)$ | Contrast success/failure traces on one task; extract the behavioral divergence point | SkillCAT, ProTeGi, TextGrad, DemoEvolve, ReasoningBank |
-| **Localized edit** | $\mathcal{B}_{\mathrm{edit}}(s)$ | One module/file/entry changed, rest fixed; minimal patch; restricted paths | SkillAdaptor, Trace2Skill, SkillWeaver, AgentSquare, MASS, AlphaEvolve, Meta-Harness, AHE |
-| **Bounded search** | $s_{k+1} \in \mathcal{B}(s_k, \Delta_k)$ | Edit budget, minimal-modification principle, allowlist, interface-signature invariance | SkillOpt ($L_t: 4{\to}2$), SkillOpt-Lite, SkillForge, SoftSkill ($m{=}32$), ACE, Self-Harness |
-| **Search memory** | archive of candidates, returns, rejections | Rejected-edit buffer avoids re-exploring dead directions; novelty rejection sampling | SkillOpt rejected buffer, ShinkaEvolve, GEPA, Meta-Harness |
-| **Gradient-free search** | $\tilde{s} \in \operatorname{Select}(\mathcal{A}_t; R)$ | Elitism, island models, recombination, Pareto selection | Promptbreeder, ADAS, AFlow, AgentSquare, ELM, FunSearch, AlphaEvolve, DGM, CORAL |
-| **Adaptive search** | $\delta_t = F_t - F_{t-1}$, schedule by $\delta_t$ | Allocate exploration budget by fitness improvement and stagnation | AdaEvolve, ShinkaEvolve, ThetaEvolve, AFlow |
+| **Scalar score** | $\widehat{\Delta}=\widehat{R}(s')-\widehat{R}(s)$ | rank candidates or retain elites | APE, OPRO, DSPy, MIPROv2, GEPA, Reflexion, Voyager |
+| **Batch evidence** | $\frac{1}{b}\sum_i\big[f(s+\mu u_i)-f(s)\big]u_i$ | aggregate patterns across tasks before editing | ExpeL, SkillOpt ($B_m{=}8$), SkillOpt-Lite, Trace2Skill, SkillForge, Self-Harness |
+| **Success/failure contrast** | $\widehat{\Delta}=\widehat{R}(s^{+})-\widehat{R}(s^{-})$ | localize a behavioral difference | ProTeGi, TextGrad, SkillCAT, ReasoningBank, DemoEvolve |
+| **Localized edit** | $\dfrac{f(s+\mu e_i)-f(s)}{\mu}\,e_i$ | restrict a proposal to one entry, module, file, or subgraph | SkillAdaptor, Trace2Skill, SkillWeaver, AgentSquare, MASS, AlphaEvolve, Meta-Harness, AHE |
+| **Bounded edit** | $s_{k+1}\in\mathcal{B}(s_k,\Delta_k)$ | limit description-space change per round | SkillOpt ($L_t: 4 \to 2$), SkillOpt-Lite, SkillForge, SoftSkill ($m{=}32$), ACE, Self-Harness |
+| **Search memory** | $\hat g_{\mathrm{cv}}=\hat g-c+\mathbb{E}[c]$ | steer proposals away from known-dead directions; novelty rejection | SkillOpt rejected buffer, ShinkaEvolve, GEPA, Meta-Harness |
+| **Archive or population** | $\widetilde{s}\in\operatorname{Select}(\mathcal{A}_t;R)$ | retain, recombine, or diversify candidates | Promptbreeder, EvoPrompt, ADAS, AFlow, MaAS, ELM, FunSearch, AlphaEvolve, DGM, CORAL, AIDE |
+| **Adaptive schedule** | step size or radius set from improvement history | allocate exploration budget by improvement and stagnation | AdaEvolve, ShinkaEvolve, ThetaEvolve, AFlow |
 
-Full per-operator notes, including where each analogy breaks, are in [`docs/zo-operator-map.md`](docs/zo-operator-map.md).
+The rows are not mutually exclusive: SkillOpt occupies four of them at once. The taxonomy classifies mechanisms, not papers.
 
-**A restatement worth making.** SkillOpt describes itself with first-order vocabulary — learning rate, momentum, mini-batch. Structurally it is a **(1+1)-ES with a structured proposal operator**: the edit budget is a proposal radius, the rejected buffer is negative conditioning of the proposal distribution, "slow update" is a low-frequency cross-epoch component, and acceptance is strict-improvement-on-held-out. This does not weaken the method; it clarifies that the ZO map organizes information structure, not gradient-descent equivalence.
+Where each analogy stops: batch aggregation over tasks is not a multi-direction ZO estimator, because tasks are noise samples rather than perturbation directions; success/failure contrast is not a central difference unless both states are controlled perturbations of the same state; an edit-count limit is not automatically a trust-region radius, because syntactic size need not bound behavioral distance; and a rejected-edit buffer is a control variate only if the correlated quantity is named and its variance reduction measured. Per-label requirements are in [`docs/zo-operator-map.md`](docs/zo-operator-map.md).
+
+**A restatement worth making.** SkillOpt describes itself with first-order vocabulary — learning rate, momentum, mini-batch. Structurally it is a **(1+1)-ES with a structured proposal operator**: the edit budget is a proposal radius, the rejected buffer is negative conditioning of the proposal distribution, and acceptance is strict improvement on a held-out set. This does not weaken the method; it clarifies that the ZO map organizes information structure and does not assert gradient-descent equivalence.
 
 ### I.3 Operator implementability depends on surface structure
 
-**The real dependency between the object axis and this one — and it is not monotone in level.** It is not that higher levels get stronger operators; it is that **specific operators require specific structure**.
+| Requirement | Plain text | Versioned executable code |
+|---|---|---|
+| Controlled paired comparison | usually heuristic | possible with feature flags and paired replay |
+| Stable edit boundary | section or entry chosen by convention | file, module, interface, or graph node |
+| Pre-run feasibility check | schema and syntax checks only | compile, type-check, static analysis |
+| Exact restoration | content can be restored; side effects need separate handling | version control plus process, cache, registry, and memory cleanup |
 
-| Operator | Requires | Plain text | Versioned executable code |
-|---|---|---|---|
-| **Pairwise contrast** | a constructible negative direction | $s - \mu u$ cannot be built; only heuristic contrast at divergence points | Feature toggles make on/off both deployable and co-runnable — a genuine paired comparison |
-| **Localized edit** | objective block boundaries | Text coordinates are not orthogonal; paragraph splits are arbitrary | Import graph and interface signatures give statically decidable boundaries |
-| **Search memory** | pairable replay | No explicit variate, no known mean, no unbiased correction — variance reduction unverifiable | Deterministic seeds plus version control cancel common randomness |
-| **Bounded search** | a measurable behavioral distance | Edit count is not semantic distance: one word can change everything, ten lines of comment nothing | Files touched, cross-module reach, signature change, smoke pass rate |
-
-This is why allowlists, feature toggles, and versioned rollback are not bolt-on safety measures: they are preconditions that make these operators implementable at all — and, by [Proposition A](#ii2-multi-round-reuse-the-reachable-set-bound), they also tighten the confirmation bound.
-
-Two further points, stated once. **(a) Query budget has an extra tier.** Compile, type-check, and static analysis reject candidates *before* any rollout, so the optimal allocation is filter-then-evaluate rather than uniform; and the *form* of the surface determines how strong that filter is, since natural-language artifacts admit no comparable pre-run criterion. This is not a "zero-cost oracle" — it consumes compute, just not task rollouts. **(b) Evidence is on-policy.** $\mathcal{E}_t$ is sampled under the current $s_t$, so once a failure class is fixed it vanishes from later traces, and the optimizer may revert the constraint that fixed it. This is an estimator-bias problem, not a generalization-bound problem, and no bound is given here: any bound would require modeling the proposer's behavior, and the assumptions would outweigh the conclusion.
+Allowlists, feature flags, and rollback affect both search and governance. They do not by themselves prove that an edit improves expected performance.
 
 ---
 
 ## Axis II — PAC and Stability
 
-*Axis I explains how candidates are produced. This axis answers: **under what conditions may one stochastic trial be promoted to persistent state?***
+Let the bounded loss and population risk be
 
-Setup: base model $M$ fixed, $z \sim \mathcal{D}$, loss $\ell(s;z) = 1 - R(H_s(M,z)) \in [0,1]$, risk $\epsilon(s) = \mathbb{E}_{z\sim\mathcal{D}}[\ell(s;z)]$.
+```math
+\ell(s;z)=1-R\!\left(H_s(M,z)\right)\in[0,1],
+\qquad
+\epsilon(s)=\mathbb{E}_{z\sim\mathcal{D}}[\ell(s;z)].
+```
+
+For a finite task set $V$, write $\widehat\epsilon_V(s)$ for mean empirical loss and $\widehat R_V(s)=1-\widehat\epsilon_V(s)$ for mean empirical return.
 
 ### II.1 Two bounds, two different jobs
 
-A candidate scoring higher on observed tasks is not thereby better on $\mathcal{D}$. Two bounds address two distinct failures.
+**Update stability** asks how much the learned state changes when one proposal task changes. Let $\mathcal{A}$ map a proposal sample $D_N$ to a state, and let $\beta_{\mathrm{avg}}$ be the expected replace-one sensitivity of $\ell(\mathcal{A}(D_N);z)$. Average stability supports an **expectation-level** statement,
 
-**(B1) Update side — stability.** With $s_D = \mathcal{A}(D_N)$ and $s_{D^{\setminus i}}$ its leave-one-out counterpart, expected on-average stability is
+```math
+\mathbb{E}\!\left[\epsilon(\mathcal{A}(D_N))-\widehat{\epsilon}_{D_N}(\mathcal{A}(D_N))\right]
+\le
+\beta_{\mathrm{avg}},
+```
 
-$$
-\beta_{\exp} = \mathbb{E}_{D_N, i, z}\big[\,\lvert \ell(s_D; z) - \ell(s_{D^{\setminus i}}; z)\rvert\,\big],
-$$
+and nothing stronger: from this definition alone no high-probability bound follows, which would require uniform stability or further assumptions.
 
-giving
+$\beta_{\mathrm{avg}}$ is what the **batch-evidence** row of [I.2](#i2-proposal-signals-and-their-operators) is about, and it is the one place the two axes meet. Hardcoding a single case, or copying an environment detail specific to one trial, raises it; aggregating across tasks and bounding the edit lowers it. That is a mechanism hypothesis, not a measured coefficient, unless a paper actually estimates the replace-one quantity.
 
-$$
-\epsilon(s_D) \le \widehat{\epsilon}_{D_N}(s_D) + O\!\left(\beta_{\exp} + \sqrt{\tfrac{\ln(1/\delta)}{N}}\right).
-$$
+**Independent confirmation** asks how a fixed candidate performs on fresh tasks. If $V_m$ contains $m$ i.i.d. tasks from $\mathcal{D}$ and the candidate $s$ was fixed without using $V_m$, Hoeffding's inequality gives, with probability at least $1-\delta$,
 
-$\beta_{\exp}$ measures how much a single rollout anomaly moves the update. Case-by-case hardcoding and mimicking one trial's environment inflate it; cross-task aggregation and bounded edits reduce it. **This is the statistical content of the batch-consensus row in [I.2](#i2-proposal-signals-and-their-operators)** — where the two axes meet.
+```math
+\epsilon(s)
+\le
+\widehat{\epsilon}_{V_m}(s)
++
+\sqrt{\frac{\ln(1/\delta)}{2m}}.
+```
 
-**(B2) Confirmation side — independent validation.** If $V_m$ is independent of the training data *and of the proposal process*, then for a fixed candidate $\tilde{s}$,
+These questions are related but not interchangeable. Batch aggregation may reduce sensitivity to one proposal task; it does not make a repeatedly reused validation set fresh. Conversely, fresh validation measures a fixed candidate honestly but does not make the proposal algorithm stable.
 
-$$
-\epsilon(\tilde{s}) \le \widehat{\epsilon}_{V_m}(\tilde{s}) + O\!\left(\sqrt{\tfrac{\ln(1/\delta)}{m}}\right).
-$$
-
-However unstable the update was, $\beta_{\exp}$ is **completely absent** from this bound.
-
-> **Insight 2.** The two are not additive and not substitutable. (B1) governs whether the update was hijacked by one rollout; (B2) governs whether repeated selection on one set created selection bias. **An update with tiny $\beta_{\exp}$ can still overfit $V_m$ badly across rounds, and vice versa.** So consensus mining (lowering $\beta_{\exp}$) and validation rotation (lowering selection bias) solve different problems. The literature calls both "improving generalization," which hides the split.
-
-**Three premises of (B2), all of which fail in practice.**
-
-| Premise | How it fails |
-|---|---|
-| **(i) Independence** | Fixed selection sets are repeatedly `argmax`-ed. When tasks are expensive, systems substitute manual inspection and leak audits — defensible engineering, but not independence, and the equivalence is rarely argued |
-| **(ii) Bounded signal bias** | Compile-pass and smoke tests show a candidate *runs*, not that it meets spec. Structurally hardest for semantic constraints: whatever is auto-checkable has already been made a gate, so what remains is exactly what auto-checking cannot establish — and the only self-verification signal is task success, while one class of constraint exists to prevent fabricated success |
-| **(iii) External evaluator** | Most fragile, structurally: **the evaluator and the evaluated share one repository.** Documented behaviors include deleting logging to bypass detection and pre-seeding the environment to obtain reward without doing the work |
+The inequality guarantees only the metric encoded by $\ell$. Evaluator validity and evaluator protection are measurement conditions, not extra conclusions supplied by concentration.
 
 ### II.2 Multi-round reuse: the reachable-set bound
 
-The multi-round loop breaks premise (i) directly — $\tilde{s}_{t+1}$ depends on $V$ through rounds $1..t$. The fix is to bound not the independence, but **the hypothesis class that was actually tested**.
+After validation results influence later proposals, the final candidate is no longer independent of the reused set. One conservative repair is a uniform bound over a **fixed, validation-independent finite class** $\mathcal{C}$ containing every state the process may test:
 
-STOP's Lemma 1 union-bounds over all programs of length $\le l$, a *static* class. HarnessOpt has two things it does not: **A1**, an anchored start $s_0$ fixed before optimization; and **A2**, a per-round edit bounded by an edit script of length $\le L$ — the direct product of the trust-region principle. Under A1–A2, the set $\mathcal{H}_T$ of all states ever proposed **or tested** satisfies $\ln\lvert\mathcal{H}_T\rvert \le T(L+1)\ln\lvert\Sigma\rvert$.
+```math
+\epsilon(s)
+\le
+\widehat{\epsilon}_{V_m}(s)
++
+\sqrt{\frac{\ln|\mathcal{C}|+\ln(1/\delta)}{2m}}
+\qquad
+\text{for all }s\in\mathcal{C}.
+```
 
-> **Proposition A.** With loss bounded in $[0,1]$ and A1–A2 holding, with probability $\ge 1-\delta$, simultaneously for all $s \in \mathcal{H}_T$:
->
-> $$\epsilon(s) \le \widehat{\epsilon}_{V_m}(s) + \eta_T, \qquad \eta_T := \sqrt{\frac{T(L+1)\ln\lvert\Sigma\rvert + \ln(1/\delta)}{2m}}$$
->
-> This holds for $s_T$ **without requiring $s_T \perp V_m$** — exactly what multi-round reuse needs. *(Hoeffding plus a union bound over $\mathcal{H}_T$.)*
+A bounded edit language can make such a class finite. If $s_0$ is fixed independently of $V_m$ and each round applies one script from a fixed set $\mathcal{U}_L$, then all states reachable within $T$ rounds lie in a class with
 
-Three consequences:
+```math
+|\mathcal{C}_T|
+\le
+\sum_{t=0}^{T}|\mathcal{U}_L|^t.
+```
 
-- **Evolution rounds cost statistical budget.** $\eta_T$ grows as $\sqrt{T}$: each round looks at the same set once more. Holding slack under $\epsilon$ needs $m \gtrsim T(L+1)\ln\lvert\Sigma\rvert / (2\epsilon^2)$ — validation size must scale with rounds. Reported practice sits in the opposite regime: small splits, non-small $T$.
-- **The edit budget, not the program size, controls tightness.** With $l_{\mathrm{eff}} := T(L+1)$, Proposition A is STOP's bound with $l \to l_{\mathrm{eff}}$, and is strictly stronger whenever $T(L+1) < \lvert s_T \rvert$. **This gives trust-region and minimal-edit design a justification beyond variance reduction: a smaller $L$ directly tightens confirmation.** Unbudgeted whole-file rewrites drive $L \approx \lvert s \rvert$ and forfeit it.
-- **Rotation beats enlargement.** Using a fresh $V^{(t)}$ each round with $\delta_t = \delta/T$ gives slack $\sqrt{(\ln T + \ln(1/\delta))/(2m)}$ — logarithmic in $T$ instead of linear, at a cost of $Tm$ tasks. Rotate rather than enlarge when fresh tasks cost less than $\sqrt{T/\ln T}$ times the enlargement.
+This count is conditional on a complete script language: path names, inserted content, external retrieval, and side-effecting operations must all be covered. Diff size is only a proxy for the required description length. Candidate count alone is not enough to justify a union bound when candidates are chosen adaptively from validation feedback.
 
-**Where this breaks.** A2 is the weak point: $L$ must be the *description length* of the edit (diff bytes), not the edit count — one edit can paste 400 lines. If the proposer can retrieve arbitrary external content into the state, $L$ is unbounded and the proposition does not apply. A1 fails if Round-0 consumed tasks later used for confirmation.
+Write $\eta_T$ for the resulting slack. Since $\ln|\mathcal{C}_T|\le(T+1)\ln|\mathcal{U}_L|+O(1)$,
+
+```math
+\eta_T
+\;=\;
+\sqrt{\frac{\ln|\mathcal{C}_T|+\ln(1/\delta)}{2m}}
+\;=\;
+O\!\left(\sqrt{\frac{T\ln|\mathcal{U}_L|+\ln(1/\delta)}{2m}}\right).
+```
+
+Three consequences follow, each conditional on the assumptions above.
+
+- **Rounds cost statistical budget.** $\eta_T$ grows as $\sqrt{T}$, so holding the slack under a target $\epsilon$ requires $m=\Omega\big(T\ln|\mathcal{U}_L|/\epsilon^2\big)$: **validation size must scale with the number of rounds.** Reported practice usually sits in the opposite regime — a small fixed split and a non-small $T$.
+- **The edit language, not the artifact size, controls tightness.** $\eta_T$ depends on $|\mathcal{U}_L|$, the richness of one round's edit, not on $|s_T|$. This gives bounded editing a justification beyond variance reduction: **a narrower edit language directly tightens confirmation.** Unbudgeted whole-file rewrites make $\mathcal{U}_L$ effectively the whole state space and forfeit the bound entirely.
+- **Rotation beats enlargement.** Drawing a fresh $V^{(t)}$ each round and splitting the failure probability as $\delta/T$ gives slack $\sqrt{\ln(T/\delta)/(2m)}$ — logarithmic in $T$ rather than square-root — at a cost of $Tm$ tasks. This favors rotation whenever fresh tasks cost less than roughly $\sqrt{T/\ln T}$ times the enlargement. It requires genuinely unused sets; cycling through a small pool of previously observed sets is reuse.
 
 ### II.3 What follows for the acceptance gate
 
-**Accepted gains are real if the dead-zone is wide enough.** If acceptance requires $\widehat{\Delta}_{V_m} > \Delta$ with $\Delta > 2\eta_T$, then on the uniform event every accepted update satisfies $\epsilon(s_{t+1}) < \epsilon(s_t)$. Two corollaries:
+Suppose a valid uniform event gives $|\epsilon(s)-\widehat{\epsilon}_{V_m}(s)|\le\eta$ for both the current and candidate states. Then
 
-- **$\Delta$ and $L$ are coupled, not independent knobs.** The bound on $\Delta$ grows with $L$. Relaxing the edit budget requires raising the threshold in step. Current practice tunes $\Delta$ as a noise estimate and $L$ as a proposal control, independently — inconsistent.
-- **Monotone improvement requires behaviorally exact rollback.** The trajectory claim $\epsilon(s_T) \le \epsilon(s_0)$ needs rejected proposals to leave no residue. If $s_{t+1} = s_t$ fails behaviorally — lingering processes, registry entries, cache files, written memory — the chain breaks at that round. **Revertible effects are a theorem premise, not engineering hygiene**; a `git` rollback not covering runtime side effects is insufficient.
+```math
+\widehat{R}_{V_m}(\widetilde{s}_{t+1})
+-
+\widehat{R}_{V_m}(s_t)
+>
+2\eta
+```
 
-**Average non-regression hides tail collapse.** $\epsilon$ is an expectation, so degradation confined to a cluster of mass $p_k$ is invisible while it stays under $\eta_T / p_k$. Per-cluster guarantees need per-cluster sampling, $m_k = \Omega\big((T(L+1)\ln\lvert\Sigma\rvert + \ln(K/\delta))/\epsilon_k^2\big)$. This is how "aggregate score rises while individual milestones are lost" happens **without violating any bound in force** — which is why non-regression suites must be stratified and reported per cluster.
+is sufficient to conclude that the candidate has lower true risk on the metric represented by $R$. This statement is conditional on the uniform class and the evaluator; it is not a guarantee for safety, specification coverage, or a shifted task distribution.
 
-**Two drifts must not be conflated.** *Target drift* ($z \sim \mathcal{D}_t$) belongs here and accumulates as $\sum_t d(\mathcal{D}_{t-1},\mathcal{D}_t)$ — **linearly, while $\eta_T$ grows only as $\sqrt{T}$, so on a long horizon drift dominates selection bias**, giving a checkable criterion for when to restart rather than continue. *Evidence drift* belongs to [Axis I](#i3-operator-implementability-depends-on-surface-structure) and is an estimator-bias problem, not a bound problem.
+**The dead zone and the edit budget are coupled, not independent knobs.** If the gate accepts on $\widehat{\Delta}_{V_m}>\Delta$ with $\Delta>2\eta_T$, then on the uniform event every accepted update lowers true risk. But $\eta_T$ grows with $|\mathcal{U}_L|$, so relaxing the edit budget requires raising the acceptance threshold in step. Tuning $\Delta$ as a noise estimate and $L$ as a proposal control, independently — the common practice — is inconsistent with the condition that makes either meaningful.
 
-Full statements, proofs, and the assumption audit are in [`docs/pac-stability.md`](docs/pac-stability.md).
+**Monotone improvement additionally requires behaviorally exact rollback.** The chained claim $\epsilon(s_T)\le\epsilon(s_0)$ needs each rejected proposal to leave no residue. If $s_{t+1}=s_t$ holds for files but not for behavior — lingering processes, registry entries, caches, written memory — the chain breaks at that round. Revertible effects are a premise of the result, not engineering hygiene, and a `git` revert that does not cover runtime side effects does not supply it.
+
+**Average non-regression hides tail collapse.** $\epsilon$ is an expectation, so degradation confined to a task cluster of probability mass $p_k$ stays invisible while it remains below $\eta_T/p_k$. A per-cluster guarantee needs per-cluster sampling, $m_k=\Omega\big((\ln|\mathcal{C}_T|+\ln(K/\delta))/\epsilon_k^2\big)$ across $K$ clusters. This is how "aggregate score rises while specific capabilities are lost" occurs **without violating any bound in force**, and it is why a non-regression suite must be stratified and reported per cluster rather than as one mean.
+
+**Two drifts must not be conflated.** *Target drift* — the task distribution itself moving, $z\sim\mathcal{D}_t$ — accumulates as $\sum_t d(\mathcal{D}_{t-1},\mathcal{D}_t)$, that is, **linearly in $T$, while $\eta_T$ grows only as $\sqrt{T}$.** Past some horizon drift therefore dominates selection bias, which gives a checkable criterion for when re-running from a fresh $s_0$ beats continuing to evolve. *Evidence drift* is a different failure and belongs to [Axis I](#i3-operator-implementability-depends-on-surface-structure): $\mathcal{E}_t$ is sampled under the current $s_t$, so once a failure class is fixed it disappears from later traces and the optimizer may revert the constraint that fixed it. That is estimator bias, not a generalization-bound problem, and no bound is offered here because any bound would require modeling the proposer.
+
+A practical gate should record four separate checks:
+
+1. performance non-regression on appropriately separated data;
+2. safety and permission non-regression;
+3. evaluator and protected-path integrity enforced at run time;
+4. reproducible state restoration after rejection.
+
+The assumptions and derivations behind these statements are in [`docs/pac-stability.md`](docs/pac-stability.md).
 
 ---
+
 ## Paper List
 
 **Organization.** §1 gives the foundations and the guarantee ladder motivating both axes. **§2 is the core: the whole editable surface L0–L5 in one section.** §3 and §4 then re-index the *same* works by the two analytical axes — §3 by the proposal mechanism, §4 by the validation protocol. §5 covers evaluators and documented failure modes; §6 marks the boundaries.
 
 A work appearing in §2, §3, and §4 is not counted three times: §2 records what it edits, §3 how it proposes, §4 what its gate licenses one to conclude.
 
-**Entry format.** `**Name** — "Title". Authors. Venue Year. [[paper]](link) — one line tying it to HarnessOpt. [ZO: operator] [PAC: class]`
-`[ZO: …]` places the work on [Axis I](#i2-proposal-signals-and-their-operators); `[PAC: …]` on [Axis II](#4-validation-protocols-how-a-candidate-enters-persistent-state) (`open` / `same-set` / `independent`). Both tags are this list's reading, not the paper's self-description. `†` marks a preprint whose metadata may still change.
+**Entry format.** `**Name** — "Title". Authors. Venue Year. [[paper]](link) — one line tying it to HarnessOpt. [ZO analogy: role] [Gate: protocol]`
+
+`[ZO analogy: …]` is this list's interpretation of the proposal mechanism. `[Gate: …]` records the data relationship used for persistence: `open`, `search-set`, `held-out`, `fresh test`, `human review`, or `unverified`. A held-out selection set may still be reused adaptively; only a locked final test is independent of the completed selection process. `†` marks a recent record whose current bibliographic metadata should be rechecked before citation.
 
 ---
 
@@ -259,10 +317,10 @@ This section exists to answer one question: *in what sense can a self-modificati
 | **Empirical score** | Scores higher on some tasks | The common practice; §4 analyzes its boundary |
 
 - **Gödel Machines: Self-Referential Universal Problem Solvers Making Provably Optimal Self-Improvements** — J. Schmidhuber. *arXiv* 2003. [[paper]](https://arxiv.org/abs/cs/0309048) — Self-rewrite only upon an internal proof of utility gain. The upper rung. Its position is that if a rewrite's utility cannot be proven, no more can be said; this list's position is that *unprovable is not unanalyzable* — ZO describes the search-side information structure, PAC the confirmation-side sample conditions.
-- **Speculations Concerning the First Ultraintelligent Machine** — I. J. Good. *Advances in Computers* 1965. — Origin of the intelligence-explosion idea via self-design. Motivation only, one paragraph's worth.
+- **Speculations Concerning the First Ultraintelligent Machine** — I. J. Good. *Advances in Computers* 1966. [[paper]](https://doi.org/10.1016/S0065-2458%2808%2960418-0) — Origin of the intelligence-explosion idea via self-design; included only as historical motivation.
 - **Recursive Self-Improvement** — E. Yudkowsky. *LessWrong* 2008. [[post]](https://www.lesswrong.com/posts/JBadX7rwdcRFzGuju/recursive-self-improvement) — Names the RSI feedback loop.
 - **Harness Engineering for Self-Improvement** — Lilian Weng. *Lil'Log* 2026. [[blog]](https://lilianweng.github.io/posts/2026-07-04-harness/) — Frames the harness as the near-term substrate for self-improvement: the loop rarely starts with weights, it runs through the scaffolding.
-- **Code as Agent Harness: Toward Executable, Verifiable, and Stateful Agent Systems** — *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.18747) — Argues for executable, verifiable, stateful harnesses. Its verification-strength / recovery-ability / state-consistency / replayability list is name-only in the original — no definitions, no measurement protocol, no empirics. This list operationalizes them as runtime companion metrics in the [reporting checklist](#open-problems).
+- **Code as Agent Harness** — Ning et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.18747) — Surveys code as executable agent infrastructure and identifies verification, recovery, state consistency, and replayability as evaluation challenges.
 - **A Survey of Self-Evolving Agents: What, When, How, and Where to Evolve** — Gao et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2507.21046) — Taxonomy across models, memory, tools, architecture; source of the capability-dimension and time-scale distinctions this list adapts.
 - **A Comprehensive Survey of Self-Evolving AI Agents** — Fang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2508.07407) — Bridges foundation models and lifelong agentic systems; proposes "Three Laws of Self-Evolving AI Agents".
 
@@ -285,17 +343,17 @@ This section exists to answer one question: *in what sense can a self-modificati
 
 #### 2.1 L0 — Instruction prompts
 
-*The instruction layer as the optimized object. Surface: plain text.* No pre-run feasibility criterion exists, so every candidate costs rollouts; and with no constructible negative direction or objective block boundary, central difference and coordinate descent exist here only as analogies ([I.3](#i3-operator-implementability-depends-on-surface-structure)).
+*The instruction layer as the optimized object. Surface: plain text.* Syntax and schema checks may filter malformed candidates, but there is no general pre-run semantic test for instruction quality. Without a constructible negative direction or representation-defined block boundary, central difference and coordinate descent remain analogies ([I.3](#i3-operator-implementability-depends-on-surface-structure)).
 
-- **APE** — "Large Language Models Are Human-Level Prompt Engineers". Zhou et al. *ICLR* 2023. [[paper]](https://arxiv.org/abs/2211.01910) — Treats the instruction as a program; proposes and scores candidates by search. `[ZO: population & archive]` `[PAC: same-set]`
-- **OPRO** — "Large Language Models as Optimizers". Yang et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2309.03409) — Generates new solutions from a meta-prompt of prior (solution, score) pairs. The meta-prompt sees scalars only — no trace evidence — so the semantic advantage of Axis I is left unused. `[ZO: one-point]` `[PAC: same-set]`
-- **EvoPrompt** — "Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers". Guo et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2309.08532) — GA/DE over a prompt population with LLM mutation and crossover. `[ZO: population]` `[PAC: same-set]`
-- **Promptbreeder** — "Self-Referential Self-Improvement via Prompt Evolution". Fernando et al. *arXiv* 2023.† [[paper]](https://arxiv.org/abs/2309.16797) — Evolves task-prompts *and* the mutation-prompts that modify them. An L0-content / L4-mechanism hybrid: the earliest instance in this list of a loop editing its own editor. `[ZO: population]` `[PAC: same-set]`
-- **ProTeGi** — "Automatic Prompt Optimization with 'Gradient Descent' and Beam Search". Pryzant et al. *EMNLP* 2023. [[paper]](https://arxiv.org/abs/2305.03495) — Coined "textual gradients": LLM critiques as natural-language gradients editing prompts. Structurally the central-difference *role* without a constructible $s-\mu u$. `[ZO: central difference (analogy)]` `[PAC: same-set]`
-- **DSPy** — "Compiling Declarative Language Model Calls into Self-Improving Pipelines". Khattab et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2310.03714) — Programming model treating LM pipelines as optimizable text-transformation graphs. `[ZO: population & archive]` `[PAC: same-set]`
-- **MIPROv2** — "Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs". Opsahl-Ong et al. *EMNLP* 2024. [[paper]](https://arxiv.org/abs/2406.11695) — Jointly bootstraps few-shot demos and proposes instructions via Bayesian optimization. Building a surrogate for $f$ instead of querying it blindly is a materially different ZO strategy from LLM-proposal, and the only one in this list that does so. `[ZO: surrogate-model search]` `[PAC: same-set]`
-- **TextGrad** — "Automatic 'Differentiation' via Text". Yuksekgonul et al. *Nature* 2025. [[paper]](https://arxiv.org/abs/2406.07496) — Backpropagates textual feedback through compound AI systems. The "gradient" is semantic side-information on a zeroth-order query, not a verifiable derivative; nothing cancels, so none of central difference's variance advantages transfer. `[ZO: central difference (analogy)]` `[PAC: same-set]`
-- **GEPA** — "Reflective Prompt Evolution Can Outperform Reinforcement Learning". Agrawal et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2507.19457) — Genetic-Pareto reflective optimizer reading full traces; up to 35× fewer rollouts than RL. Evidence that trace-informed proposals reduce the *number of queries needed* — a proposal-quality claim, not a claim that any query was avoided. `[ZO: population + control variate]` `[PAC: independent]`
+- **APE** — "Large Language Models Are Human-Level Prompt Engineers". Zhou et al. *ICLR* 2023. [[paper]](https://arxiv.org/abs/2211.01910) — Treats the instruction as a program; proposes and scores candidates by search. `[ZO analogy: population / archive]` `[Gate: search-set]`
+- **OPRO** — "Large Language Models as Optimizers". Yang et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2309.03409) — Generates new solutions from a meta-prompt of prior (solution, score) pairs. The meta-prompt sees scalars only — no trace evidence — so the semantic advantage of Axis I is left unused. `[ZO analogy: one-point]` `[Gate: search-set]`
+- **EvoPrompt** — "EvoPrompt: Connecting LLMs with Evolutionary Algorithms Yields Powerful Prompt Optimizers". Guo et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2309.08532) — GA/DE over a prompt population with LLM mutation and crossover. `[ZO analogy: population / archive]` `[Gate: search-set]`
+- **Promptbreeder** — "Promptbreeder: Self-Referential Self-Improvement Via Prompt Evolution". Fernando et al. *arXiv* 2023.† [[paper]](https://arxiv.org/abs/2309.16797) — Evolves task prompts and the mutation prompts that modify them, combining L0 content with an L4 mechanism. `[ZO analogy: population / archive]` `[Gate: search-set]`
+- **ProTeGi** — "Automatic Prompt Optimization with 'Gradient Descent' and Beam Search". Pryzant et al. *EMNLP* 2023. [[paper]](https://arxiv.org/abs/2305.03495) — Uses LLM critiques, called “textual gradients,” to guide prompt edits and beam search. The feedback is diagnostic language, not a numerical derivative. `[ZO analogy: trace-informed proposal]` `[Gate: search-set]`
+- **DSPy** — "DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines". Khattab et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2310.03714) — Programming model treating LM pipelines as optimizable text-transformation graphs. `[ZO analogy: population / archive]` `[Gate: search-set]`
+- **MIPROv2** — "Optimizing Instructions and Demonstrations for Multi-Stage Language Model Programs". Opsahl-Ong et al. *EMNLP* 2024. [[paper]](https://arxiv.org/abs/2406.11695) — Jointly bootstraps few-shot demos and proposes instructions via Bayesian optimization, an example of surrogate-model search rather than critique-only proposal. `[ZO analogy: surrogate-model search]` `[Gate: search-set]`
+- **TextGrad** — "TextGrad: Automatic 'Differentiation' via Text". Yuksekgonul et al. *Nature* 2025. [[paper]](https://arxiv.org/abs/2406.07496) — Propagates textual feedback through compound AI systems. The “gradient” is semantic side information, not a verifiable derivative. `[ZO analogy: trace-informed proposal]` `[Gate: search-set]`
+- **GEPA** — "GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning". Agrawal et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2507.19457) — A Genetic-Pareto reflective optimizer that reads full traces; the paper reports up to 35× rollout efficiency over its RL comparisons. `[ZO analogy: population / archive + trace-informed proposal]` `[Gate: held-out]`
 
 #### 2.2 L1 — Context, memory, and skill libraries
 
@@ -303,76 +361,77 @@ This section exists to answer one question: *in what sense can a self-modificati
 
 **Context and memory**
 
-- **Reflexion** — "Language Agents with Verbal Reinforcement Learning". Shinn et al. *NeurIPS* 2023. [[paper]](https://arxiv.org/abs/2303.11366) — Converts feedback into verbal self-reflections stored in episodic memory across trials. The archetypal one-point estimator — one trace, one edit — and the highest-$\beta_{\exp}$ design in this list. Bypasses dynamic validation entirely in an open loop. `[ZO: one-point]` `[PAC: open]`
-- **ExpeL** — "LLM Agents Are Experiential Learners". Zhao et al. *AAAI* 2024. [[paper]](https://arxiv.org/abs/2308.10144) — Gathers experiences and extracts natural-language insights into a growing store. Cross-experience extraction is a genuine $\beta_{\exp}$-reducing mechanism even without a formal gate. `[ZO: multi-point]` `[PAC: open]`
-- **Dynamic Cheatsheet** — "Test-Time Learning with Adaptive Memory". Suzgun et al. *EACL* 2026.† [[paper]](https://arxiv.org/abs/2504.07952) — Persistent self-curated memory of strategies and snippets at inference. `[ZO: one-point]` `[PAC: open]`
-- **ACE** — "Agentic Context Engineering: Evolving Contexts for Self-Improving Language Models". Zhang et al. *ICLR* 2026. [[paper]](https://arxiv.org/abs/2510.04618) — Generator/Reflector/Curator with incremental delta updates, avoiding context collapse. Delta updates are a trust region on a text surface; the "context collapse" it prevents is a concrete instance of high $\beta_{\exp}$. `[ZO: trust region]` `[PAC: open]`
-- **ReasoningBank** — "Scaling Agent Self-Evolving with Reasoning Memory". Ouyang et al. *ICLR* 2026.† [[paper]](https://arxiv.org/abs/2509.25140) — Distills generalizable strategies from successes *and* failures; introduces memory-aware test-time scaling. Success/failure pairing plays the central-difference role at the memory layer. `[ZO: central difference (analogy)]` `[PAC: open]`
-- **Agent Workflow Memory (AWM)** — Wang, Mao, Fried, Neubig. *ICML* 2025. [[paper]](https://arxiv.org/abs/2409.07429) — Induces reusable workflows as durable procedural memory the agent grows and reuses. `[ZO: multi-point]` `[PAC: open]`
-- **Memp** — "Exploring Agent Procedural Memory". Fang et al. *ACL Findings* 2026.† [[paper]](https://arxiv.org/abs/2508.06433) — Distills trajectories into script-like procedures with build/retrieve/update strategies. One of the few works specifying *deletion*, not only writing — directly relevant to the lifecycle gap in [§8.2](#open-problems). `[ZO: multi-point]` `[PAC: open]`
-- **MemAct** — "Memory as Action: Autonomous Context Curation for Long-Horizon Agentic Tasks". Zhang et al. *ACL Findings* 2026.† [[paper]](https://arxiv.org/abs/2510.12635) — Reframes working-memory management as learnable policy actions trained end-to-end. `[ZO: — trained policy]` `[PAC: open]`
-- **Continual Harness** — "Online Adaptation for Self-Improving Foundation Agents". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.09998) — Online harness adaptation. Continuous adaptation places it directly in the small-$m$, large-$T$ regime that [corollary A-2](#ii2-multi-round-reuse-the-reachable-set-bound) flags. `[ZO: one-point / multi-point]` `[PAC: open]`
+- **Reflexion** — "Reflexion: Language Agents with Verbal Reinforcement Learning". Shinn et al. *NeurIPS* 2023. [[paper]](https://arxiv.org/abs/2303.11366) — Converts feedback into verbal reflections stored in episodic memory across trials. `[ZO analogy: one-point]` `[Gate: open]`
+- **ExpeL** — "ExpeL: LLM Agents Are Experiential Learners". Zhao et al. *AAAI* 2024. [[paper]](https://arxiv.org/abs/2308.10144) — Extracts reusable natural-language insights from a pool of experiences. Aggregation may reduce dependence on one trajectory, but the paper does not establish an algorithmic-stability coefficient. `[ZO analogy: batch evidence]` `[Gate: open]`
+- **Dynamic Cheatsheet** — "Dynamic Cheatsheet: Test-Time Learning with Adaptive Memory". Suzgun et al. *EACL* 2026.† [[paper]](https://arxiv.org/abs/2504.07952) — Persistent self-curated memory of strategies and snippets at inference. `[ZO analogy: one-point]` `[Gate: open]`
+- **ACE** — "Agentic Context Engineering: Evolving Contexts for Self-Improving Language Models". Zhang et al. *ICLR* 2026. [[paper]](https://arxiv.org/abs/2510.04618) — Uses Generator, Reflector, and Curator roles with incremental context updates. The bounded-edit label is an analogy; edit count is not a semantic distance. `[ZO analogy: bounded edit]` `[Gate: open]`
+- **ReasoningBank** — "ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory". Ouyang et al. *ICLR* 2026.† [[paper]](https://arxiv.org/abs/2509.25140) — Distills strategies from successes and failures and introduces memory-aware test-time scaling. `[ZO analogy: contrastive diagnosis]` `[Gate: open]`
+- **Agent Workflow Memory (AWM)** — Wang, Mao, Fried, Neubig. *ICML* 2025. [[paper]](https://arxiv.org/abs/2409.07429) — Induces reusable workflows as durable procedural memory the agent grows and reuses. `[ZO analogy: batch evidence]` `[Gate: open]`
+- **Memp** — "Memp: Exploring Agent Procedural Memory". Fang et al. *ACL Findings* 2026.† [[paper]](https://arxiv.org/abs/2508.06433) — Distills trajectories into script-like procedures with build, retrieval, and update strategies, including deletion. `[ZO analogy: batch evidence]` `[Gate: open]`
+- **MemAct** — "Memory as Action: Autonomous Context Curation for Long-Horizon Agentic Tasks". Zhang et al. *ACL Findings* 2026.† [[paper]](https://arxiv.org/abs/2510.12635) — Reframes working-memory management as learnable policy actions trained end-to-end. `[ZO analogy: boundary — trained policy]` `[Gate: open]`
+- **Continual Harness** — "Continual Harness: Online Adaptation for Self-Improving Foundation Agents". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.09998) — Studies online harness adaptation, where round count and evaluation-data reuse become important reporting fields. `[ZO analogy: history-conditioned proposal]` `[Gate: open]`
 
-**Skill libraries and skill optimization** — the narrowest editable surface in this list, and simultaneously the one with the most developed operator inventory and the strongest confirmation protocols. That inversion is the single clearest refutation of "larger surface ⇒ stronger method."
+**Skill libraries and skill optimization** — a narrow editable surface with several comparatively structured proposal and confirmation protocols. These examples show why editable-surface size and protocol strength should be recorded separately.
 
-- **Voyager** — "An Open-Ended Embodied Agent with Large Language Models". Wang et al. *TMLR* 2024. [[paper]](https://arxiv.org/abs/2305.16291) — Lifelong learning via automatic curriculum plus a self-growing executable skill library. Single-error signals trigger local program overwrites. The library is executable, so a feasibility oracle exists — but it gates compilation, not generalization. `[ZO: one-point]` `[PAC: open]`
-- **SkillWeaver** — "Web Agents can Self-Improve by Discovering and Honing Skills". Zheng et al. *COLM* 2025. [[paper]](https://arxiv.org/abs/2504.07079) — Agents synthesize reusable, debugged API skills into their harness; +31.8% on WebArena. The debug loop is a feasibility oracle, not a confirmation gate. `[ZO: coordinate descent]` `[PAC: same-set]`
-- **SkillOpt** — "Executive Strategy for Self-Evolving Agent Skills". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.23904) — Mini-batch reflection ($B_m{=}8$), decaying edit budget ($L_t: 4 \to 2$), rejected-edit buffer, hierarchical parallel LLM tree reduction; three-way disjoint split with the test set locked before final reporting. The most complete operator inventory in the skill literature. It describes itself in first-order vocabulary (learning rate, momentum, mini-batch), but structurally it is a (1+1)-ES with a structured proposal operator — see [I.2](#i2-proposal-signals-and-their-operators). `[ZO: multi-point + trust region + control variate]` `[PAC: independent]`
-- **SkillOpt-Lite** — "Better and Faster Agent Self-evolution via One Line of Code". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2607.03451) — Consensus mining, held-out selection, staged compile–smoke–full confirmation. Source of the ZO/PAC framing this list builds on; explicitly formulates skill optimization as language-mediated program compilation. Reports high variance on small validation splits — the small-$m$ regime of corollary A-2, observed empirically. `[ZO: multi-point + confirmation gate]` `[PAC: independent]`
-- **Trace2Skill** — "Distill Trajectory-Local Lessons into Transferable Agent Skills". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2603.25158) — ZO-SGD with map-reduce patch merging. Strong (B1) mechanism, compromised (B2): it gates on sub-sampled training subsets. The cleanest single illustration that the two bounds are independent. `[ZO: multi-point + coordinate descent]` `[PAC: same-set]`
-- **SkillForge** — "Forging Domain-Specific, Self-Evolving Agent Skills in Cloud Technical Support". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2604.08618) — Batch ticket aggregation for trajectory denoising; enforces a minimal-modification principle. `[ZO: multi-point + trust region]` `[PAC: independent]`
-- **SkillCAT** — "Contrastive, Assessment-Augmented and Topology-Aware Skill Self-Evolution for LLM Agents". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.13317) — Custom contrastive operator at the action-divergence point $w_i$. The closest thing in the skill literature to a real central difference; still lacks a constructible $s-\mu u$, and it gates on direct clones of the source training-failure instances. `[ZO: central difference]` `[PAC: same-set]`
-- **SkillAdaptor** — "Self-Adapting Skills for LLM Agents from Trajectories". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.01311) — Coordinate descent with faulty step $t^*$ as axis and candidate skill $s_j$ as basis vector. `[ZO: coordinate descent]` `[PAC: same-set]`
-- **SoftSkill** — "Behavioral Compression for Contextual Adaptation". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.20333) — Bounds the soft prefix at $m{=}32$ tokens. A rare case where the trust region is a *hard dimensional* constraint rather than an edit-count heuristic — the only radius in this list that is unambiguously measurable. `[ZO: trust region]` `[PAC: same-set]`
+- **Voyager** — "Voyager: An Open-Ended Embodied Agent with Large Language Models". Wang et al. *TMLR* 2024. [[paper]](https://arxiv.org/abs/2305.16291) — Lifelong learning via automatic curriculum plus a self-growing executable skill library. Single-error signals trigger local program overwrites. The library is executable, so a feasibility oracle exists — but it gates compilation, not generalization. `[ZO analogy: one-point]` `[Gate: open]`
+- **SkillWeaver** — "SkillWeaver: Web Agents can Self-Improve by Discovering and Honing Skills". Zheng et al. *COLM* 2025. [[paper]](https://arxiv.org/abs/2504.07079) — Agents synthesize reusable, debugged API skills into their harness; the paper reports a 31.8% improvement on WebArena. The debug loop is a feasibility filter, not a confirmation gate. `[ZO analogy: localized edit]` `[Gate: search-set]`
+- **SkillOpt** — "SkillOpt: Executive Strategy for Self-Evolving Agent Skills". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.23904) — Mini-batch reflection ($B_m{=}8$), decaying edit budget ($L_t: 4 \to 2$), rejected-edit buffer, hierarchical parallel LLM tree reduction; three-way disjoint split with the test set locked before final reporting. This list reads these mechanisms as batch evidence, bounded editing, and history-conditioned proposal rather than as literal first-order optimization. `[ZO analogy: batch evidence + bounded edit]` `[Gate: held-out]`
+- **SkillOpt-Lite** — "SkillOpt-Lite: Better and Faster Agent Self-evolution via One Line of Vibe". Shen, Li, Zhang. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2607.03451) — Uses consensus mining, held-out selection, and staged compile–smoke–full evaluation. The paper is the source of the ZO/PAC framing adopted here; this list narrows several of its theoretical claims. `[ZO analogy: batch evidence + bounded edit]` `[Gate: held-out]`
+- **Trace2Skill** — "Trace2Skill: Distill Trajectory-Local Lessons into Transferable Agent Skills". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2603.25158) — Uses map-reduce patch merging over trajectory-local lessons. Its gate uses training-derived subsets, so it is not independent confirmation. `[ZO analogy: batch evidence + localized edit]` `[Gate: search-set]`
+- **SkillForge** — "SkillForge: Forging Domain-Specific, Self-Evolving Agent Skills in Cloud Technical Support". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2604.08618) — Aggregates batches of tickets for trajectory denoising and applies a minimal-modification principle. `[ZO analogy: batch evidence + bounded edit]` `[Gate: held-out]`
+- **SkillCAT** — "SkillCAT: Contrastive, Assessment-Augmented and Topology-Aware Skill Self-Evolution for LLM Agents". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.13317) — Contrasts trajectories at an action-divergence point. This is diagnostic contrast, not a numerical central-difference estimator. `[ZO analogy: contrastive diagnosis]` `[Gate: search-set]`
+- **SkillAdaptor** — "SkillAdaptor: Self-Adapting Skills for LLM Agents from Trajectories". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.01311) — Localizes a faulty trajectory step and proposes a targeted skill change. `[ZO analogy: localized edit]` `[Gate: search-set]`
+- **SoftSkill** — "SoftSkill: Behavioral Compression for Contextual Adaptation". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.20333) — Constrains adaptation to a 32-token soft prefix, giving a measurable parameter-space dimension. `[ZO analogy: bounded edit]` `[Gate: search-set]`
 
 #### 2.3 L2 — Agentic workflow and architecture search
 
-*The workflow graph or module composition is searched rather than hand-designed.* The first level where node/edge structure supplies **objective block boundaries**, making coordinate descent more than an analogy ([I.3](#i3-operator-implementability-depends-on-surface-structure)).
+*The workflow graph or module composition is searched rather than hand-designed.* Declared node, edge, and module slots can supply **representation-defined block boundaries**, making block or coordinate search literal when the algorithm uses those slots ([I.3](#i3-operator-implementability-depends-on-surface-structure)).
 
-- **ADAS / Meta Agent Search** — "Automated Design of Agentic Systems". Hu, Lu, Clune. *ICLR* 2025. [[paper]](https://arxiv.org/abs/2408.08435) — A meta-agent programs ever-better agents in code over a growing archive. `[ZO: population & archive]` `[PAC: same-set]`
-- **AFlow** — "Automating Agentic Workflow Generation". Zhang et al. *ICLR* 2025. [[paper]](https://arxiv.org/abs/2410.10762) — Workflow optimization as MCTS over code-represented graphs. MCTS makes the exploration/exploitation schedule explicit — the adaptive-step row of the operator table. `[ZO: population + adaptive step]` `[PAC: same-set]`
-- **GPTSwarm** — "Language Agents as Optimizable Graphs". Zhuge et al. *ICML* 2024. [[paper]](https://arxiv.org/abs/2402.16823) — Agents as computational graphs; node-level prompt plus edge-level REINFORCE optimization. Edge-level REINFORCE is genuinely *not* zeroth-order over the topology — a useful boundary case that shows the ZO framing is a claim about information availability, not a universal label. `[ZO: partially first-order over edges]` `[PAC: same-set]`
-- **AgentSquare** — "Automatic LLM Agent Search in Modular Design Space". Shang et al. *ICLR* 2025. [[paper]](https://arxiv.org/abs/2410.06153) — Searches a modular Planning/Reasoning/ToolUse/Memory space via evolution and recombination. Module slots give the cleanest objective coordinate basis in this list. `[ZO: coordinate descent + population]` `[PAC: same-set]`
-- **MaAS** — "Multi-agent Architecture Search via Agentic Supernet". Zhang et al. *ICML* 2025. [[paper]](https://arxiv.org/abs/2502.04180) — Optimizes a probabilistic agentic supernet for cost-adaptive, query-dependent systems. `[ZO: population]` `[PAC: same-set]`
-- **MASS** — "Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies". Zhou et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2502.02533) — Interleaved multi-stage search over prompts and topologies. Explicit block-coordinate structure: prompts and topology are alternated rather than searched jointly. `[ZO: block coordinate descent]` `[PAC: same-set]`
-- **ScoreFlow** — "Mastering LLM Agent Workflows via Score-based Preference Optimization". Wang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2502.04306) — Continuous gradient-based workflow optimization via Score-DPO. A first-order boundary case: it relaxes part of the workflow into a differentiable object, escaping the ZO setting by changing the representation rather than the information available. `[ZO: boundary — first-order]` `[PAC: same-set]`
-- **FlowReasoner** — "Reinforcing Query-Level Meta-Agents". Gao et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2504.15257) — An RL-tuned reasoning meta-agent that designs a bespoke multi-agent system per query. `[ZO: boundary — RL]` `[PAC: same-set]`
-- **EvoAgent** — "Towards Automatic Multi-Agent Generation via Evolutionary Algorithms". Yuan et al. *NAACL* 2025. [[paper]](https://arxiv.org/abs/2406.14228) — Mutation, crossover, and selection extending one agent into a multi-agent system. `[ZO: population]` `[PAC: same-set]`
-- **Agent Symbolic Learning** — "Symbolic Learning Enables Self-Evolving Agents". Zhou et al. *arXiv* 2024.† [[paper]](https://arxiv.org/abs/2406.18532) — Language "loss/gradients/backprop" to jointly optimize prompts, tools, and pipeline. `[ZO: central difference (analogy)]` `[PAC: same-set]`
-- **Alita** — "Generalist Agent Enabling Scalable Agentic Reasoning with Minimal Predefinition and Maximal Self-Evolution". Qiu et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2505.20286) — Self-evolves by autonomously generating and reusing its own MCP tools on the fly. Tool generation expands the *interaction* surface, not just the state — exactly the case where safety probes must cover newly introduced surfaces rather than only final output ([§4.4](#42-acceptance-should-be-a-joint-condition)). `[ZO: population]` `[PAC: open]`
+- **ADAS / Meta Agent Search** — "Automated Design of Agentic Systems". Hu, Lu, Clune. *ICLR* 2025. [[paper]](https://arxiv.org/abs/2408.08435) — A meta-agent programs ever-better agents in code over a growing archive. `[ZO analogy: population / archive]` `[Gate: search-set]`
+- **AFlow** — "AFlow: Automating Agentic Workflow Generation". Zhang et al. *ICLR* 2025. [[paper]](https://arxiv.org/abs/2410.10762) — Workflow optimization as MCTS over code-represented graphs. MCTS makes the exploration/exploitation schedule explicit — the adaptive-step row of the operator table. `[ZO analogy: population / archive + adaptive schedule]` `[Gate: search-set]`
+- **GPTSwarm** — "Language Agents as Optimizable Graphs". Zhuge et al. *ICML* 2024. [[paper]](https://arxiv.org/abs/2402.16823) — Agents as computational graphs; node-level prompt plus edge-level REINFORCE optimization. Edge-level REINFORCE is genuinely *not* zeroth-order over the topology — a useful boundary case that shows the ZO framing is a claim about information availability, not a universal label. `[ZO analogy: boundary — first-order over edges]` `[Gate: search-set]`
+- **AgentSquare** — "AgentSquare: Automatic LLM Agent Search in Modular Design Space". Shang et al. *ICLR* 2025. [[paper]](https://arxiv.org/abs/2410.06153) — Searches a modular Planning/Reasoning/ToolUse/Memory space via evolution and recombination. Its declared module slots provide a coordinate basis for search. `[ZO analogy: localized edit + population / archive]` `[Gate: search-set]`
+- **MaAS** — "Multi-agent Architecture Search via Agentic Supernet". Zhang et al. *ICML* 2025. [[paper]](https://arxiv.org/abs/2502.04180) — Optimizes a probabilistic agentic supernet for cost-adaptive, query-dependent systems. `[ZO analogy: population / archive]` `[Gate: search-set]`
+- **MASS** — "Multi-Agent Design: Optimizing Agents with Better Prompts and Topologies". Zhou et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2502.02533) — Interleaved multi-stage search over prompts and topologies. Explicit block-coordinate structure: prompts and topology are alternated rather than searched jointly. `[ZO analogy: localized edit]` `[Gate: search-set]`
+- **ScoreFlow** — "ScoreFlow: Mastering LLM Agent Workflows via Score-based Preference Optimization". Wang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2502.04306) — Continuous gradient-based workflow optimization via Score-DPO. A first-order boundary case: it relaxes part of the workflow into a differentiable object, escaping the ZO setting by changing the representation rather than the information available. `[ZO analogy: boundary — first-order]` `[Gate: search-set]`
+- **FlowReasoner** — "FlowReasoner: Reinforcing Query-Level Meta-Agents". Gao et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2504.15257) — An RL-tuned reasoning meta-agent that designs a bespoke multi-agent system per query. `[ZO analogy: boundary — RL]` `[Gate: search-set]`
+- **EvoAgent** — "EvoAgent: Towards Automatic Multi-Agent Generation via Evolutionary Algorithms". Yuan et al. *NAACL* 2025. [[paper]](https://arxiv.org/abs/2406.14228) — Mutation, crossover, and selection extending one agent into a multi-agent system. `[ZO analogy: population / archive]` `[Gate: search-set]`
+- **Agent Symbolic Learning** — "Symbolic Learning Enables Self-Evolving Agents". Zhou et al. *arXiv* 2024.† [[paper]](https://arxiv.org/abs/2406.18532) — Uses language-level “loss,” “gradients,” and “backpropagation” to optimize prompts, tools, and pipelines. `[ZO analogy: trace-informed proposal]` `[Gate: search-set]`
+- **Alita** — "Alita: Generalist Agent Enabling Scalable Agentic Reasoning with Minimal Predefinition and Maximal Self-Evolution". Qiu et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2505.20286) — Generates and reuses MCP tools at run time. Tool generation expands the interaction surface, so the safety checks in [§4.2](#42-acceptance-should-be-a-joint-condition) must cover new tools as well as final output. `[ZO analogy: population / archive]` `[Gate: open]`
 
 #### 2.4 L3 — Self-modifying harness code
 
-*The agent's own code as the object of modification.* The only level where the [feasibility oracle](#i3-operator-implementability-depends-on-surface-structure) is strong, real central difference is constructible via feature toggles, and paired replay makes control variates verifiable. It is simultaneously where premise (iii) of (B2) is most fragile — **the evaluator lives in the same repository as the code being edited**.
+*The agent's own code as the object of modification.* Executable code supports compile-time checks, feature flags, and paired replay. It also creates a governance risk when the evaluator or protected paths share the writer's permission boundary.
 
-- **STOP** — "Self-Taught Optimizer: Recursively Self-Improving Code Generation". Zelikman et al. *COLM* 2024. [[paper]](https://arxiv.org/abs/2310.02304) — A seed improver recursively improves its own scaffolding code with weights fixed; the improver, not the solution, is the target. Its Appendix A.2 Lemma 1 gives a uniform-convergence bound over all programs of length $\le l$. [Proposition A](#ii2-multi-round-reuse-the-reachable-set-bound) is its dynamic counterpart: an anchored start plus a bounded per-round edit replaces the static program class with a reachable set, and $l$ with $l_{\mathrm{eff}} = T(L+1)$. `[ZO: population]` `[PAC: same-set + uniform-convergence analysis]`
-- **Gödel Agent** — "A Self-Referential Agent Framework for Recursive Self-Improvement". Yin et al. *ACL* 2025. [[paper]](https://arxiv.org/abs/2410.04444) — Monkey-patches its own logic dynamically at runtime. In-place runtime patching makes *behaviorally exact* rollback hard, which directly threatens the monotonicity premise [B-2](#ii3-what-follows-for-the-acceptance-gate). `[ZO: one-point]` `[PAC: open]`
-- **Darwin Gödel Machine (DGM)** — "Open-Ended Evolution of Self-Improving Agents". Zhang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2505.22954) — A coding agent rewrites its own codebase over an open-ended archive; SWE-bench 20%→50%. Archive search with a large per-round $L$ — the regime where $\eta_T$ grows fastest ([A-3](#ii2-multi-round-reuse-the-reachable-set-bound)), since unbudgeted rewrites drive $L \approx |s|$. `[ZO: population & archive]` `[PAC: same-set]`
-- **SICA** — "A Self-Improving Coding Agent". Robeyns et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2504.15228) — Removes the meta/target distinction; the agent edits its own codebase for cost, speed, and accuracy. `[ZO: one-point + coordinate descent]` `[PAC: same-set]`
-- **Self-Harness** — "Harnesses That Improve Themselves". Zhang et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.09498) — Weakness mining → bounded harness proposal → regression validation on held-in/held-out splits. The bidirectional held-in/held-out non-regression check is the closest published approximation to the [four acceptance checks](#42-acceptance-should-be-a-joint-condition). `[ZO: multi-point + trust region + confirmation gate]` `[PAC: independent]`
-- **Agentic Harness Engineering (AHE)** — "Observability-Driven Automatic Evolution of Coding-Agent Harnesses". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2604.25850) — Prediction manifest plus next-round rollback. Retrospective confirmation without a disjoint held-out set; its safety ceiling is bounded by attribution accuracy, which is reported low ([II.1](#ii1-two-bounds-two-different-jobs)). `[ZO: coordinate descent]` `[PAC: independent (retrospective)]`
-- **AutoHarness** — "Improving LLM Agents by Automatically Synthesizing a Code Harness". Lou et al. *arXiv* 2026.† — Iterative code refinement with environment feedback to auto-synthesize a code harness. `[ZO: one-point / multi-point]` `[PAC: unverified]`
-- **Ouroboros** — "A Self-Developing Frontier Coding Agent with Reviewed Core Evolution". Razzhigaev et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2608.08311) [[code]](https://github.com/razzant/ouroboros) — Reviewed commits become the runtime for later work. Human review in the write path is a distinct point on the *write-authority* sub-axis, and it materially changes what $\mathcal{H}_T$ contains: a human-rejected candidate never enters the reachable set. `[ZO: coordinate descent]` `[PAC: independent (human-gated)]`
-- **CORAL** — "Towards Autonomous Multi-Agent Evolution for Open-Ended Discovery". Qu et al. *COLM* 2026. [[paper]](https://arxiv.org/abs/2604.01658) [[code]](https://github.com/Human-Agent-Society/CORAL) — Coding agents in isolated worktrees around an external grader, retaining scored attempts and sharing notes and reusable skills. Worktree isolation is a concrete implementation of the exact-rollback premise of [B-2](#ii3-what-follows-for-the-acceptance-gate) — a rejected attempt cannot leave residue in the parent state by construction. `[ZO: population & archive]` `[PAC: independent]`
-- **DemoEvolve** — "Overcoming Sparse Feedback in Agentic Harness Evolution with Demonstrations". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.24539) — Human demonstrations supply the contrast signal that sparse rewards do not. A demonstration is an externally supplied "positive direction" — one of the few ways to get a contrast pair without constructing $s - \mu u$. `[ZO: central difference]` `[PAC: independent]`
+- **STOP** — "Self-Taught Optimizer (STOP): Recursively Self-Improving Code Generation". Zelikman et al. *COLM* 2024. [[paper]](https://arxiv.org/abs/2310.02304) — A seed improver recursively improves its own scaffolding code with weights fixed. Appendix A.2 gives a uniform-convergence argument over a bounded program class; the reachable-class discussion in [II.2](#ii2-multi-round-reuse-the-reachable-set-bound) adapts only that counting pattern. `[ZO analogy: population / archive]` `[Gate: search-set]`
+- **Gödel Agent** — "Gödel Agent: A Self-Referential Agent Framework for Recursive Self-Improvement". Yin et al. *ACL* 2025. [[paper]](https://arxiv.org/abs/2410.04444) — Monkey-patches its own logic at run time. File restoration alone may not undo processes, caches, or other side effects created by an in-place patch. `[ZO analogy: one-point]` `[Gate: open]`
+- **Darwin Gödel Machine (DGM)** — "Darwin Godel Machine: Open-Ended Evolution of Self-Improving Agents". Zhang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2505.22954) — A coding agent rewrites its own codebase while maintaining an archive of agents. `[ZO analogy: population / archive]` `[Gate: search-set]`
+- **SICA** — "A Self-Improving Coding Agent". Robeyns et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2504.15228) — Removes the meta/target distinction; the agent edits its own codebase for cost, speed, and accuracy. `[ZO analogy: localized edit]` `[Gate: search-set]`
+- **Self-Harness** — "Self-Harness: Harnesses That Improve Themselves". Zhang et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.09498) — Uses weakness mining, bounded harness proposals, and regression checks on held-in/held-out splits. `[ZO analogy: batch evidence + bounded edit]` `[Gate: held-out]`
+- **Agentic Harness Engineering (AHE)** — "Agentic Harness Engineering: Observability-Driven Automatic Evolution of Coding-Agent Harnesses". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2604.25850) — Uses a prediction manifest and next-round rollback. This is retrospective recovery rather than confirmation on a disjoint set; missed attributions can therefore prevent rollback. `[ZO analogy: localized edit]` `[Gate: retrospective]`
+- **Ouroboros** — "Ouroboros: A Self-Developing Frontier Coding Agent with Reviewed Core Evolution". Razzhigaev et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2608.08311) [[code]](https://github.com/razzant/ouroboros) — Reviewed commits become the runtime for later work. Human review changes write authority, but it is not statistical independence unless the review uses fresh evaluation data. `[ZO analogy: localized edit]` `[Gate: human review]`
+- **CORAL** — "CORAL: Towards Autonomous Multi-Agent Evolution for Open-Ended Discovery". Qu et al. *COLM* 2026. [[paper]](https://arxiv.org/abs/2604.01658) [[code]](https://github.com/Human-Agent-Society/CORAL) — Coding agents operate in isolated worktrees around a grader while retaining scored attempts and shared notes. Worktree isolation protects the parent filesystem, but behavioral rollback also depends on processes and external side effects. `[ZO analogy: population / archive]` `[Gate: held-out, reuse unverified]`
+- **DemoEvolve** — "DemoEvolve: Overcoming Sparse Feedback in Agentic Harness Evolution with Demonstrations". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.24539) — Uses human demonstrations to supply diagnostic evidence that sparse rewards omit. `[ZO analogy: contrastive diagnosis]` `[Gate: held-out]`
+- **AutoHarness** — "AutoHarness: improving LLM agents by automatically synthesizing a code harness". Lou et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2603.03329) — Synthesizes the external control code (action parser, legality checker, retry logic) rather than the policy, refining it iteratively from environment feedback. The target is illegal-action failures in rule-bound environments, which makes legality a necessary condition rather than a complete objective. `[ZO analogy: one-point + localized edit]` `[Gate: search-set]`
 
 #### 2.5 L4 — Optimizer and meta-harness code
 
-*The code that proposes edits is itself edited.* Not a "higher" rung in any capability sense — it is the case where $P$ enters $\mathcal{S}_{\mathrm{edit}}$. The consequence for Axis II is specific: the reachable-set count of Proposition A still applies, but $\beta_{\exp}$ now describes an algorithm that is itself changing, so (B1) governs a moving object.
+*The code that proposes edits is itself edited.* Here $P$ enters $\mathcal{S}_{\mathrm{edit}}$. Any stability or finite-class analysis must therefore cover the changing proposer as part of the state.
 
-- **Meta-Harness** — "End-to-End Optimization of Model Harnesses". Lee et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2603.28052) — An agentic proposer searches over harness *code* via the file system; returns a Pareto frontier of harnesses. File-level edits give real block boundaries and Pareto selection is the population row. Reports declining to carve an independent split on expensive terminal tasks — the small-$m$, non-small-$T$ case corollary A-2 warns about. `[ZO: coordinate descent + population + control variate]` `[PAC: independent (partial)]`
-- **Hyperagents** — Zhang et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2603.19461) — A meta-agent controls how to modify task agents to create new ones. `[ZO: population]` `[PAC: unverified]`
-- **MCE** — "Meta Context Engineering via Agentic Skill Evolution". Ye et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2601.21557) — Bi-level framework co-evolving context-management *skills* (meta) and context *artifacts* (base, as files or code). L1 content with an L4 mechanism in one loop; the explicit separation of mechanism from content is what makes the two levels separable at all. `[ZO: population]` `[PAC: same-set]`
+- **Meta-Harness** — "Meta-Harness: End-to-End Optimization of Model Harnesses". Lee et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2603.28052) — Searches harness code through a filesystem interface and returns a Pareto frontier. File-level representation supplies a local edit unit; its terminal-task setting has no independent selection split. `[ZO analogy: localized edit + population / archive]` `[Gate: search-set]`
+- **Hyperagents** — Zhang et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2603.19461) — A meta-agent controls how to modify task agents to create new ones. `[ZO analogy: population / archive]` `[Gate: unverified]`
+- **MCE** — "Meta Context Engineering via Agentic Skill Evolution". Ye et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2601.21557) — A bi-level framework that co-evolves context-management skills and context artifacts, combining L1 content with an L4 mechanism. `[ZO analogy: population / archive]` `[Gate: search-set]`
 - **Promptbreeder** — *(also §2.1)* — Evolving the mutation-prompt is the L4 facet of an L0 system. Listed twice by facet, not counted twice.
 
 #### 2.6 L5 — Joint harness and weight optimization (boundary)
 
-*Harness edits and weight updates in one loop.* Included as a boundary, not a core comparison object: once weights move, the "base model fixed" condition of the HarnessOpt definition is suspended, $\beta_{\exp}$ must be redefined over the joint state, and the reachable-set count of Proposition A no longer applies because weight updates are not describable by a bounded edit script over $\Sigma$.
+*Harness edits and weight updates in one loop.* Included as a boundary, not a core comparison object. Once weights move, the base-model-fixed definition is suspended and any analysis must treat software and parameters as a joint state.
 
-- **SIA** — "Self Improving AI with Harness & Weight Updates". Hebbar et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.27276) — A Feedback-Agent decides, per iteration, whether to update the harness or the model weights. `[ZO: — mixed]` `[PAC: same-set]`
-- **SEAL** — "Self-Adapting Language Models". Zweiger et al. *NeurIPS* 2025. [[paper]](https://arxiv.org/abs/2506.10943) — The model generates its own "self-edits" (finetuning data plus directives), applied via SFT inside an RL loop. `[ZO: boundary — RL]` `[PAC: same-set]`
+- **SIA** — "SIA: Self Improving AI with Harness & Weight Updates". Hebbar et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.27276) — A Feedback-Agent decides, per iteration, whether to update the harness or the model weights. `[ZO analogy: boundary — mixed]` `[Gate: search-set]`
+- **SEAL** — "Self-Adapting Language Models". Zweiger et al. *NeurIPS* 2025. [[paper]](https://arxiv.org/abs/2506.10943) — The model generates its own "self-edits" (finetuning data plus directives), applied via SFT inside an RL loop. `[ZO analogy: boundary — RL]` `[Gate: search-set]`
 
 ---
+
 ### 3. Proposal Mechanisms: How Run Evidence Becomes an Edit
 
 Related surveys have catalogued prompt optimization and self-evolving agents by method family. This section does not repeat that. It maps work onto **how a query signal becomes a modification proposal** — the editable range is §2's subject, the acceptance protocol is §4's.
@@ -385,11 +444,11 @@ Scalar returns answer *which candidates are worth continuing*. Trace feedback fu
 | **Trajectory and error logs** | Localizing failure; proposing a plausible patch | Correct attribution; evidence for acceptance | ProTeGi, TextGrad, SkillCAT, GEPA, AHE, Trace2Skill |
 | **Search history and archive** | Diversity, novelty, avoiding dead directions | Whether a retained candidate generalizes | Promptbreeder, ADAS, AFlow, ELM, AlphaEvolve, ShinkaEvolve, DGM |
 
-Language feedback remains a zeroth-order query carrying semantic side-information — not a verifiable gradient. Localized edits, edit budgets, and rejected buffers constrain the *reach* of a proposal and repeated exploration; they do not create a differentiable object. However a proposal is formed, it cannot by itself justify entry into persistent state: acceptance, non-regression, and rollback remain §4's gate $G$.
+The scalar objective channel is zeroth-order; language feedback is additional semantic side information, not a verifiable gradient. Localized edits, edit budgets, and rejected buffers constrain proposals but do not justify persistence. Acceptance, non-regression, and rollback remain §4's gate $G$.
 
-#### 3.1 Operator inventory by system
+#### 3.1 Representative proposal-role inventory
 
-Cross-tabulating [I.2](#i2-proposal-signals-and-their-operators) against the levels of §2. Reading down a column shows one operator recurring across levels; reading across a row shows a system's actual mechanism mix.
+This representative table maps [I.2](#i2-proposal-signals-and-their-operators) to the levels of §2. Reading down a column shows one role across levels; reading across a row shows a system's mechanism mix.
 
 | System | Level | Scalar | Batch | Contrast | Localized | Bounded | Memory | Population | Adaptive |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -418,6 +477,7 @@ Cross-tabulating [I.2](#i2-proposal-signals-and-their-operators) against the lev
 | Self-Harness | L3 | | ● | | | ● | | | |
 | AHE | L3 | | | | ● | | | | |
 | DemoEvolve | L3 | | | ● | | | | | |
+| AutoHarness | L3 | ● | | | ● | | | | |
 | CORAL | L3 | | | | | | ● | ● | |
 | AlphaEvolve | L3 | | | | ● | | | ● | ● |
 | ShinkaEvolve | L3 | | | | | | ● | ● | ● |
@@ -429,28 +489,28 @@ Three readings:
 
 1. **Operators are level-independent.** Localized edits run from L1 skill files to L4 optimizer code; population search from L0 prompts to L4. The object axis does not predict the mechanism.
 2. **The narrowest surface has the richest inventory.** L1 skill optimization occupies more cells than L3 code editing. Operator sophistication tracks *how hard the confirmation problem was taken*, not how much is editable.
-3. **Contrast and localization rarely co-occur** — most systems pick one. Under [I.3](#i3-operator-implementability-depends-on-surface-structure) they need different structure from the surface, so this is a constraint, not a preference.
+3. **Contrast and localization often appear separately in this catalogue.** They need different information and representation structure; the table is descriptive and does not establish that the two are incompatible.
 
 #### 3.2 Search engines
 
 The mechanisms L2–L4 systems build on. Their contribution *is* the operator.
 
 - **FunSearch** — "Mathematical Discoveries from Program Search with Large Language Models". Romera-Paredes et al. *Nature* 2023. [[paper]](https://www.nature.com/articles/s41586-023-06924-6) — LLM plus evaluator in an evolutionary loop; the template later self-improving coding agents descend from.
-- **AlphaEvolve** — "A Coding Agent for Scientific and Algorithmic Discovery". Novikov et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2506.13131) — LLM ensemble plus evaluators over marked `EVOLVE-BLOCK` regions. The marked region is a human-declared coordinate basis — the clearest case of a surface engineered so localization is implementable rather than analogical.
-- **ShinkaEvolve** — "Towards Open-Ended and Sample-Efficient Program Evolution". Lange et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2509.19349) — Parent sampling, novelty rejection sampling, bandit LLM selection. Novelty rejection steers proposals away from covered directions, though without an unbiased correction.
-- **AdaEvolve** — "Adaptive LLM Driven Zeroth-Order Optimization". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2602.20133) — Explicitly casts LLM-driven search as zeroth-order with an adaptive schedule; the nearest published neighbor to this axis.
-- **ThetaEvolve** — "Test-time Learning on Open Problems". Wang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2511.23473) — Evolutionary search with RL and in-context learning.
-- **ELM** — "Evolution through Large Models". Lehman et al. *arXiv* 2022.† [[paper]](https://arxiv.org/abs/2206.08896) — LLM diff model as mutation operator inside MAP-Elites. A diff model is a literal bounded-edit-script proposer — assumption A2 realized by construction rather than convention.
-- **AIDE** — "AI-Driven Exploration in the Space of Code". Jiang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2502.13138) — ML engineering as agentic tree search over its own solutions.
+- **AlphaEvolve** — "AlphaEvolve: A coding agent for scientific and algorithmic discovery". Novikov et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2506.13131) — LLM ensemble plus evaluators over marked `EVOLVE-BLOCK` regions. The marked region is a human-declared coordinate basis — the clearest case of a surface engineered so localization is implementable rather than analogical.
+- **ShinkaEvolve** — "ShinkaEvolve: Towards Open-Ended And Sample-Efficient Program Evolution". Lange et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2509.19349) — Parent sampling, novelty rejection sampling, bandit LLM selection. Novelty rejection steers proposals away from covered directions, though without an unbiased correction.
+- **AdaEvolve** — "AdaEvolve: Adaptive LLM Driven Zeroth-Order Optimization". *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2602.20133) — Explicitly casts LLM-driven search as zeroth-order with an adaptive schedule; the nearest published neighbor to this axis.
+- **ThetaEvolve** — "ThetaEvolve: Test-time Learning on Open Problems". Wang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2511.23473) — Evolutionary search with RL and in-context learning.
+- **ELM** — "Evolution through Large Models". Lehman et al. *arXiv* 2022.† [[paper]](https://arxiv.org/abs/2206.08896) — Uses an LLM diff model as a mutation operator inside MAP-Elites. The diff representation supplies an explicit edit unit, but not by itself a finite validation-independent candidate class.
+- **AIDE** — "AIDE: AI-Driven Exploration in the Space of Code". Jiang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2502.13138) — ML engineering as agentic tree search over its own solutions.
 
 #### 3.3 Classical zeroth-order theory
 
 Cited for operator definitions and their known properties; none is about agents.
 
 - **A Primer on Zeroth-Order Optimization in Signal Processing and Machine Learning** — Liu et al. *IEEE SPM* 2020. [[paper]](https://arxiv.org/abs/2006.06224) — The toolbox this axis maps onto: one-point and two-point estimators, coordinate methods, variance reduction, rates.
-- **Optimal Rates for Zero-Order Convex Optimization: The Power of Two Function Evaluations** — Duchi, Jordan, Wainwright, Wibisono. *IEEE TIT* 2015. [[paper]](https://arxiv.org/abs/1312.2139) — Why two-point estimators dominate one-point ones, with matching lower bounds. The formal reason a constructible negative direction matters: what text surfaces lose is a provable rate, not elegance.
+- **Optimal Rates for Zero-Order Convex Optimization: The Power of Two Function Evaluations** — Duchi, Jordan, Wainwright, Wibisono. *IEEE TIT* 2015. [[paper]](https://arxiv.org/abs/1312.2139) — Analyzes one- and two-point feedback in convex optimization, including matching rates under its stated assumptions. Those rates require numerical perturbations and do not transfer to text edits.
 - **Random Gradient-Free Minimization of Convex Functions** — Nesterov & Spokoiny. *FoCM* 2017. [[paper]](https://link.springer.com/article/10.1007/s10208-015-9296-2) — Gaussian-smoothing estimators and dimension-dependent rates. Larger edit surfaces are more expensive to *search*, independently of the confirmation argument.
-- **Online Convex Optimization in the Bandit Setting** — Flaxman, Kalai, McMahan. *SODA* 2005. [[paper]](https://arxiv.org/abs/cs/0408007) — The one-point bandit estimator and its variance cost; formal ancestor of single-trace reflection.
+- **Online Convex Optimization in the Bandit Setting** — Flaxman, Kalai, McMahan. *SODA* 2005. [[paper]](https://arxiv.org/abs/cs/0408007) — A reference point for one-point bandit feedback and its estimation cost; single-trace reflection shares only the one-observation role.
 - **Introduction to Derivative-Free Optimization** — Conn, Scheinberg, Vicente. *SIAM* 2009. [[book]](https://epubs.siam.org/doi/book/10.1137/1.9780898718768) — Trust-region and model-based DFO; source of the requirement that a radius be a behavioral distance.
 - **Completely Derandomized Self-Adaptation in Evolution Strategies** — Hansen & Ostermeier. *Evolutionary Computation* 2001. [[paper]](https://direct.mit.edu/evco/article/9/2/159/892/Completely-Derandomized-Self-Adaptation-in) — The reference for reading SkillOpt-style methods as structured (1+1)-ES rather than SGD.
 
@@ -458,48 +518,44 @@ Cited for operator definitions and their known properties; none is about agents.
 
 ### 4. Validation Protocols: How a Candidate Enters Persistent State
 
-§II.1 gives two bounds: update-side stability and confirmation-side independent validation. To describe what the literature actually does, add a third class that has no independent confirmation at all. Permissions, sandboxing, auditing, and rollback are governance conditions cutting across all three, not a separate class.
+Two fields determine the statistical reading: **which data can block persistence**, and **how often those data are reused**. Runtime isolation, human review, and rollback are separate governance fields.
 
-**The decisive difference is not whether tests were run. It is whether a test result can stop a candidate from entering persistent state, and whether the deciding set is reused across rounds.**
+| Protocol | Persistence rule | Statistical reading |
+|---|---|---|
+| **Open loop** | proposed state is written without a blocking evaluation | no candidate-confirmation claim |
+| **Search-set gate** | the data that drive proposals also rank or accept candidates | empirical selection on observed tasks; a final locked test may still evaluate the completed procedure |
+| **Held-out gate** | a separate selection or regression set can reject candidates | useful separation, but adaptive reuse makes later candidates depend on that set |
+| **Fresh confirmation** | a candidate fixed by the completed search is evaluated once on untouched data | fixed-candidate bound in §II.1 applies |
+| **Human or retrospective gate** | review or later checks can block or undo persistence | governance evidence; not statistical independence unless fresh sampled tasks are also used |
 
-| Protocol | Characteristic | Representative work | Relation to the bounds |
-|---|---|---|---|
-| **Open loop** | Experience written straight into later state; no candidate test, no recovery path | Reflexion, Voyager, ExpeL, Dynamic Cheatsheet, ACE, ReasoningBank, Memp, AWM, MemAct, Continual Harness, Gödel Agent, Alita | Premise (i) absent by construction. Supports claims about experience accumulation only |
-| **Same-set scoring** | Score, rank, keep elites on the search tasks; report a test set separately at the end | APE, OPRO, Promptbreeder, DSPy, MIPROv2, ADAS, AFlow, MaAS, AgentSquare, ELM, AlphaEvolve, ShinkaEvolve, ThetaEvolve, STOP, DGM, SICA | Candidates depend on repeatedly-observed tasks; independence fails. [Proposition A](#ii2-multi-round-reuse-the-reachable-set-bound) is the applicable reading, with $\eta_T$ growing in $T$ and $L$ |
-| **Independent validation and rollback** | Confirmed on a disjoint set, or by retrospective prediction plus version test; failures rejected or rolled back | SkillOpt, SkillOpt-Lite, SkillForge, GEPA, SkillCAT, DemoEvolve, Self-Harness, CORAL, Ouroboros; Meta-Harness (partial); AHE (retrospective) | Premise (i) holds at round 1, degrades across rounds unless rotated. Proposition A′ if rotated, A otherwise |
-
-Protocol detail differs within the third class. SkillOpt uses a three-way disjoint split with the test set locked before final reporting; SkillOpt-Lite uses held-out selection with staged compile–smoke–full confirmation; Self-Harness uses bidirectional held-in/held-out non-regression; CORAL isolates attempts in worktrees around an external grader; Ouroboros gates on human-reviewed commits. AHE's prediction manifest plus next-round rollback gives retrospective confirmation without a disjoint held-out set. SkillCAT, SkillAdaptor, and Trace2Skill run gates on clones or sub-samples of the source training failures — which places them in the second class despite having a gate.
+SkillOpt reports a three-way split and locks the test set for final reporting; its validation set is still used for selection. SkillOpt-Lite uses held-out selection with staged compile, smoke, and full evaluation. AHE uses retrospective prediction and rollback. Ouroboros uses reviewed commits. These are different protocols and should not share one `independent` label.
 
 #### 4.1 Three observations the table makes visible
 
-**Editable-surface size does not predict gate strength.** Systems whose surface covers control flow and executable code are not thereby more rigorously gated; some of the largest surfaces ship with no confirmation gate, while the narrowest surfaces in skill optimization carry three-way disjoint splits. Gate strength cannot be inferred from level number.
+Editable-surface size, proposal mechanism, and gate protocol must be reported separately. None can be inferred from another.
 
-**(B1) and (B2) are satisfied by different systems.** Trace2Skill and SkillCAT have strong consensus mechanisms and compromised confirmation; several evolutionary systems have the reverse profile. If the two bounds were substitutable this pattern would not persist — which is the empirical form of Insight 2.
-
-**Operator sophistication does not track gate strength.** SkillOpt and ShinkaEvolve implement the widest operator ranges; neither rotates its validation set.
-
-Per-system detail, with unverified entries marked, is in [`docs/audit-table.md`](docs/audit-table.md).
+Representative protocol examples, with uncertain fields marked `unverified`, are in [`docs/audit-table.md`](docs/audit-table.md).
 
 #### 4.2 Acceptance should be a joint condition
 
-Nearly every published gate measures task pass rate alone, which is blind in principle to a documented failure: performance and safety move in opposite directions. In workflow optimization, HumanEval performance rose while Refusal Rate fell 36.3% → 5.6% and Attack Success Rate rose 54.4% → 83.1%; in a memory-evolution setting, Refusal Rate fell 99.4% → 54.4% and ASR rose 0.6% → 20.6% — and the collapse can be abrupt rather than gradual (Misevolution, [2509.26354](https://arxiv.org/abs/2509.26354)).
+Task pass rate alone can miss safety regressions. In the settings studied by Misevolution, AFlow optimization raised HumanEval accuracy from 81.6% to 93.3% while Refusal Rate on RedCode-Gen fell from 36.3% to 5.6% and Attack Success Rate rose from 54.4% to 83.1%. In a separate memory-evolution experiment, Refusal Rate fell from 99.4% to 54.4% and ASR rose from 0.6% to 20.6% ([paper](https://arxiv.org/abs/2509.26354)). These are results for the paper's specific models, tasks, and protocols, not universal rates.
 
-A gate keyed on pass rate cannot see this. **Safety metrics must enter $G$ itself, not appear as an extra column in the final table.** This is compatible with the staged oracle of [I.3](#i3-operator-implementability-depends-on-surface-structure): safety probes fit in the smoke tier at a fraction of full-validation cost. Optimized components can also grow externally-interacting structures — sub-agent construction, tool registration, integration nodes — so probes must cover the new interaction surface a candidate introduces, not only its output.
+A deployment gate should therefore include safety and permission checks relevant to the editable surface. The checks must cover newly introduced tools or interactions, not only final output.
 
-Combining this with §II.3, a candidate should persist only when four conditions hold: no critical performance regression (with $\Delta > 2\eta_T$, stratified per cluster); no critical safety or permission regression; evaluator, task data, and protected paths unmodified, enforced at runtime rather than declared in a prompt; and the candidate recordable, replayable, and rollback-exact.
+The four checks listed in §II.3 separate performance, safety, evaluator integrity, and state restoration. A single average score does not cover all four.
 
 #### 4.3 Statistical machinery
 
 - **Stability and Generalization** — Bousquet & Elisseeff. *JMLR* 2002. [[paper]](https://www.jmlr.org/papers/v2/bousquet02a.html) — Uniform stability implies generalization; origin of the stability route.
-- **Learnability, Stability and Uniform Convergence** — Shalev-Shwartz, Shamir, Srebro, Sridharan. *JMLR* 11:2635–2670, 2010. [[paper]](https://jmlr.org/papers/v11/shalev-shwartz10a.html) — Expected on-average stability, the notion $\beta_{\exp}$ instantiates. *(No arXiv version.)*
-- **Train Faster, Generalize Better: Stability of Stochastic Gradient Descent** — Hardt, Recht, Singer. *ICML* 2016. [[paper]](https://arxiv.org/abs/1509.01240) — Fewer update steps imply better stability; the parametric analogue of "smaller cumulative edit budget tightens the bound," reached independently.
-- **Mathematical Analysis of Machine Learning Algorithms** — T. Zhang. *Cambridge* 2023. [[book]](https://www.cambridge.org/core/books/mathematical-analysis-of-machine-learning-algorithms/0F86E4F79A5FE3EE9C0A0A5EBFCF8E2C) — The model-selection bound (B2) comes from.
-- **Preserving Statistical Validity in Adaptive Data Analysis** — Dwork, Feldman, Hardt, Pitassi, Reingold, Roth. *STOC* 2015. [[paper]](https://arxiv.org/abs/1411.2664) — Differential privacy for reusing a holdout across adaptive queries. Whether it beats Proposition A's union bound for the accept/reject query pattern is open.
-- **The Reusable Holdout** — Dwork et al. *Science* 349(6248), 2015. [[paper]](https://www.science.org/doi/10.1126/science.aaa9375) — The Thresholdout mechanism; the most plausible route to defensible multi-round reuse.
-- **The Ladder: A Reliable Leaderboard for Machine Learning Competitions** — Blum & Hardt. *ICML* 2015. [[paper]](https://arxiv.org/abs/1502.04585) — Repeated leaderboard querying is structurally identical to repeated `argmax` on a fixed selection set, and its defense — report only on significant improvement — is what the dead-zone $\Delta$ implements.
-- **Gradient Episodic Memory for Continual Learning** — Lopez-Paz & Ranzato. *NeurIPS* 2017. [[paper]](https://arxiv.org/abs/1706.08840) — Origin of BWT/FWT. Forgetting here is caused by an explicit edit and is therefore attributable to a specific diff — the one advantage of the non-parametric setting.
+- **Learnability, Stability and Uniform Convergence** — Shalev-Shwartz, Shamir, Srebro, Sridharan. *JMLR* 11:2635–2670, 2010. [[paper]](https://jmlr.org/papers/v11/shalev-shwartz10a.html) — Relates average replace-one stability to on-average generalization; it does not by itself supply the high-probability formula removed from this list. *(No arXiv version.)*
+- **Train Faster, Generalize Better: Stability of Stochastic Gradient Descent** — Hardt, Recht, Singer. *ICML* 2016. [[paper]](https://arxiv.org/abs/1509.01240) — Stability analysis for stochastic gradient methods; cited as background, not as a theorem about text edits.
+- **Mathematical Analysis of Machine Learning Algorithms** — T. Zhang. *Cambridge* 2023. [[book]](https://www.cambridge.org/core/books/mathematical-analysis-of-machine-learning-algorithms/0F86E4F79A5FE3EE9C0A0A5EBFCF8E2C) — Background on concentration and model selection.
+- **Preserving Statistical Validity in Adaptive Data Analysis** — Dwork, Feldman, Hardt, Pitassi, Reingold, Roth. *STOC* 2015. [[paper]](https://arxiv.org/abs/1411.2664) — Differential-privacy-based tools for adaptive statistical queries.
+- **The Reusable Holdout** — Dwork et al. *Science* 349(6248), 2015. [[paper]](https://www.science.org/doi/10.1126/science.aaa9375) — Thresholdout for controlled reuse of a holdout.
+- **The Ladder: A Reliable Leaderboard for Machine Learning Competitions** — Blum & Hardt. *ICML* 2015. [[paper]](https://arxiv.org/abs/1502.04585) — A mechanism for limiting information released by repeated leaderboard interaction; related to, but not identical with, HarnessOpt selection.
+- **Gradient Episodic Memory for Continual Learning** — Lopez-Paz & Ranzato. *NeurIPS* 2017. [[paper]](https://arxiv.org/abs/1706.08840) — Source for backward/forward transfer metrics used as continual-learning references.
 - **Overcoming Catastrophic Forgetting in Neural Networks** — Kirkpatrick et al. *PNAS* 2017. [[paper]](https://arxiv.org/abs/1612.00796) — Marks the contrast: with no weights to protect, stability–plasticity must be restated on task-set performance, with no parameter-importance analogue.
-- **A Programming Paradigm for Spatiotemporal Composability** — *2026.†* — Revertible effects and reactive coeffects; the systems language for the exact-rollback premise.
+- **A Programming Paradigm for Spatiotemporal Composability** — Shi, Zhang, Cui. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2608.25512) — Defines revertible effects and reactive coeffects; retained as a systems-design reference, not as evidence that current HarnessOpt systems implement them.
 
 ---
 
@@ -509,8 +565,8 @@ A benchmark plays two roles that are routinely conflated: the set that **drives 
 
 **Coding and terminal agents**
 
-- **SWE-bench** — Jimenez et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2310.06770) — 2,294 real issue→PR tasks; the standard target for coding-harness self-improvement.
-- **Terminal-Bench** — Merrill et al. *arXiv* 2026.† — Human-verified containerized terminal tasks; used by Meta-Harness and Self-Harness. Per-task cost is what pushes systems out of an independent split.
+- **SWE-bench** — Jimenez et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2310.06770) — 2,294 real issue→PR tasks; a common evaluation target for coding agents.
+- **Terminal-Bench: Benchmarking Agents on Hard, Realistic Tasks in Command Line Interfaces** — Merrill et al. *ICLR* 2026. [[paper]](https://openreview.net/forum?id=a7Qa4CcHak) [[code]](https://github.com/harbor-framework/terminal-bench-1) — Human-verified containerized terminal tasks used by Meta-Harness and Self-Harness. Experiments should still report how selection data relate to the final test.
 - **ClawBench** — Zhang et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2604.08523) [[code]](https://github.com/reacher-z/ClawBench) — Live-web tasks with request interception and replayable traces.
 - **HAL** — Kapoor et al. *ICLR* 2026. [[paper]](https://arxiv.org/abs/2510.11977) — Cost-aware third-party leaderboard across 9 benchmarks.
 
@@ -519,23 +575,23 @@ A benchmark plays two roles that are routinely conflated: the set that **drives 
 - **PaperBench** — Starace et al. *ICML* 2025. [[paper]](https://arxiv.org/abs/2504.01848) — Replicate 20 ICML 2024 papers; 8,316 rubrics.
 - **MLE-bench** — Chan et al. *ICLR* 2025. [[paper]](https://arxiv.org/abs/2410.07095) — 75 Kaggle competitions with human baselines.
 - **RE-Bench** — Wijk et al. *ICML* 2025. [[paper]](https://arxiv.org/abs/2411.15114) — 7 open-ended ML R&D environments versus 61 human experts.
-- **KernelBench** — Ouyang et al. *ICML* 2025. [[paper]](https://arxiv.org/abs/2502.10517) — 250 PyTorch workloads scored by `fast_p`. A fast automatable verifier is a strong pre-run filter, which is why evolutionary harnesses favor it — and why its scores generalize less readily than they appear to.
+- **KernelBench** — Ouyang et al. *ICML* 2025. [[paper]](https://arxiv.org/abs/2502.10517) — 250 PyTorch workloads scored by `fast_p`. Its automated verifier is convenient for search, while the score remains limited to the correctness and performance criteria it encodes.
 
-**Long-horizon retention** — the benchmarks that can see what episodic evaluation cannot: LifelongAgentBench, LTMBenchmark, MemoryAgentBench. Most benchmarks reset agent state per task and therefore cannot observe forgetting, state pollution, or safety drift at all.
+**Long-horizon retention** — benchmarks such as LifelongAgentBench, LTMBenchmark, and MemoryAgentBench evaluate cross-task state. Any evaluation that resets agent state per task cannot measure cross-round forgetting, state pollution, or safety drift.
 
 **Harness interaction**
 
-- **Harness Updating Is Not Harness Benefit** — *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.30621) — Separates harness-*updating* capability from harness-*benefit*, decomposing failure into activation versus adherence via SLR/HFR/LPR, and refuting the assumption that the strongest model makes the best optimizer. Two caveats the original makes checkable: its editable surface is limited to the skill layer, and its updating-side and benefit-side aggregations are asymmetric.
+- **Harness Updating Is Not Harness Benefit** — *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.30621) — Separates harness-*updating* capability from harness-*benefit* and decomposes failure into activation and adherence via SLR/HFR/LPR. Its reported comparisons indicate that a stronger model is not always a better harness optimizer; the editable surface is limited to the skill layer.
 
 **Verifiers**
 
 - **Let's Verify Step by Step** — Lightman et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2305.20050) — Process supervision beats outcome supervision; releases PRM800K.
 - **Generative Verifiers** — Zhang et al. *ICLR* 2025. [[paper]](https://arxiv.org/abs/2408.15240) — CoT verification via next-token prediction.
-- **LLMs Cannot Self-Correct Reasoning Yet** — Huang et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2310.01798) — Intrinsic self-correction degrades without an external signal — the empirical case for keeping the verifier outside $\mathcal{S}_{\mathrm{edit}}$.
+- **LLMs Cannot Self-Correct Reasoning Yet** — Huang et al. *ICLR* 2024. [[paper]](https://arxiv.org/abs/2310.01798) — Reports that intrinsic self-correction can reduce reasoning performance without external feedback, supporting a distinction between proposer self-critique and external evidence.
 
 **Structural limits shared across this section.** Episodic design cannot measure retention. Repeated selection on one set erodes confirmation. Execution verifiers can still be narrow proxies, so report verification strength and false acceptance, not only pass rate. Performance benchmarks are blind to evaluator hacking, which attacks the measuring apparatus and needs hidden evaluators and audit logs. Safety and capability can move in opposite directions. And gains across different base models and harnesses cannot be merged: one score mixes base model, evolver, harness, tool protocol, and evaluator.
 
-**Failure modes documented in the literature.** Misevolution ([2509.26354](https://arxiv.org/abs/2509.26354)) is the systematic study across model, memory, tool, and workflow paths. On the evaluator being reachable: reward tampering ([2406.10162](https://arxiv.org/abs/2406.10162)), monitoring and obfuscation ([2503.11926](https://arxiv.org/abs/2503.11926)), reward hacking formalized ([2209.13085](https://arxiv.org/abs/2209.13085)), overoptimization scaling laws ([2210.10760](https://arxiv.org/abs/2210.10760)). On evaluation validity: AI Agents That Matter ([2407.01502](https://arxiv.org/abs/2407.01502)), leakage in ML-based science ([2207.07048](https://arxiv.org/abs/2207.07048)), METR's finding that many SWE-bench-passing PRs would not be merged. On loops declaring victory on noise: "p-hacking and eureka-ing" ([2511.16072](https://arxiv.org/abs/2511.16072)) — the failure the dead-zone is built to prevent — and six recurring failure modes of self-directed research loops ([2601.03315](https://arxiv.org/abs/2601.03315)). Safety probes suitable for placing inside $G$: AgentHarm ([2410.09024](https://arxiv.org/abs/2410.09024)).
+**Failure modes documented in the literature.** Misevolution ([2509.26354](https://arxiv.org/abs/2509.26354)) studies safety degradation across model, memory, tool, and workflow evolution. Related evidence covers reward tampering ([2406.10162](https://arxiv.org/abs/2406.10162)), monitoring and obfuscation ([2503.11926](https://arxiv.org/abs/2503.11926)), formal accounts of reward hacking ([2209.13085](https://arxiv.org/abs/2209.13085)), overoptimization scaling laws ([2210.10760](https://arxiv.org/abs/2210.10760)), evaluation design ([2407.01502](https://arxiv.org/abs/2407.01502)), and leakage in ML-based science ([2207.07048](https://arxiv.org/abs/2207.07048)). Self-directed research loops may also select noise ([2511.16072](https://arxiv.org/abs/2511.16072), [2601.03315](https://arxiv.org/abs/2601.03315)). AgentHarm ([2410.09024](https://arxiv.org/abs/2410.09024)) is one candidate safety probe; applicability depends on the system's interaction surface.
 
 ---
 
@@ -551,34 +607,33 @@ A benchmark plays two roles that are routinely conflated: the set that **drives 
 **Out of scope, listed to mark the edge.** *Harness design* — the hand-authored substrate these methods act on: ReAct ([2210.03629](https://arxiv.org/abs/2210.03629)), Self-Refine ([2303.17651](https://arxiv.org/abs/2303.17651)), SWE-agent ([2405.15793](https://arxiv.org/abs/2405.15793)), OpenHands ([2407.16741](https://arxiv.org/abs/2407.16741)), CodeAct ([2402.01030](https://arxiv.org/abs/2402.01030)), AutoGen ([2308.08155](https://arxiv.org/abs/2308.08155)), MetaGPT ([2308.00352](https://arxiv.org/abs/2308.00352)), MemGPT ([2310.08560](https://arxiv.org/abs/2310.08560)), MCP ([2503.23278](https://arxiv.org/abs/2503.23278)). *Weight-only self-improvement* — improves the model, not the harness: SPIN ([2401.01335](https://arxiv.org/abs/2401.01335)), Self-Rewarding LMs ([2401.10020](https://arxiv.org/abs/2401.10020)), Absolute Zero ([2505.03335](https://arxiv.org/abs/2505.03335)), R-Zero ([2508.05004](https://arxiv.org/abs/2508.05004)), TTRL ([2504.16084](https://arxiv.org/abs/2504.16084)), DeepSeek-R1 ([2501.12948](https://arxiv.org/abs/2501.12948)), STaR ([2203.14465](https://arxiv.org/abs/2203.14465)). When co-optimized with the harness in one loop, the work belongs in [§2.6](#26-l5--joint-harness-and-weight-optimization-boundary).
 
 ---
+
 ## Open Problems
 
-Stated as questions that experiment can settle, not as designs asserted to work.
+These questions are distilled from the future-work sections of `SURVEY-OUTLINE-v2.md` and `SURVEY-OUTLINE-v3（fable5）.md`.
 
-**1 · Tighter multi-round reuse.** Proposition A pays $\sqrt{T}$ for validation reuse. A differentially-private reusable holdout answers many adaptive queries against one set with a better dependence. Whether that survives the HarnessOpt query pattern — accept/reject decisions on candidates, more structured than general adaptive analysis — and at what accuracy cost, is open.
+**1 · Lifecycle contracts for persistent components.** What executable contract is sufficient to ensure that unloading a plugin removes registrations and side effects, dependency changes can be resolved, and rejection restores the pre-edit behavior? Evaluation should test cleanup, replay, and cross-version recovery rather than only file rollback.
 
-**2 · A formulation for evidence drift.** Once a failure class is fixed it disappears from traces, so the optimizer loses the evidence that the constraint remains necessary and may revert it. No bound is given here because any bound requires modeling the proposer. An assumption-light formulation — bounding how far a constraint's evidence may decay before reversion becomes likely — would be a real contribution.
+**2 · Deletion and non-parametric forgetting.** When should a memory entry, rule, test, or plugin be retained, compressed, archived, or removed? The field needs a forgetting definition based on task behavior and a reporting protocol that links regressions to accepted diffs without assuming that every regression has a single cause.
 
-**3 · Deletion, not just writing.** Most self-evolving work specifies how to write and not how to delete, and this has a statistical consequence: exact rollback is a premise of the monotonicity result, so uncleaned side effects break it at that round. Two invariants are needed — unloading revokes registrations and side effects; dependency changes re-resolve into a compatible configuration. A workable specification gives entries an explicit lifecycle with a retention criterion that depends on **whether the entry still covers a high-probability trap in the current search neighborhood**, not on its length. In Axis I's terms, the memory set should cover the current neighborhood's high-probability failure directions.
+**3 · Division of responsibility by confirmation cost.** Which checks can run near execution, and which require a separate evaluator with fresh tasks, repeated trials, and audit capacity? The hypothesis should be tested with promotion rate, validation latency, privacy exposure, rollback cost, and cross-version failure rate; deployment location alone does not determine statistical independence.
 
-**4 · Merging independently evolved lineages.** Per-round local edit records do not predict merged behavior, and the single-lineage protocol does not carry over. This is a theoretical gap, not only an engineering one: the reachable-set count fails on merge, because the merged state lies in neither lineage's reachable set.
+**4 · Stability–plasticity under an edit budget.** How do edit size, affected components, and behavioral reach trade improvement speed against regression risk? Description length is measurable, but its relationship to behavioral change is unknown; that relationship must be estimated before edit budget can serve as more than an engineering limit.
 
-**5 · An operational cluster partition.** Stratified validation requires per-cluster reporting, but "report per cluster" is unexecutable without a defensible way to partition capabilities. Until one exists, report the partition used and its rationale, so readers can judge whether a tail capability could have hidden inside a large cluster.
+**5 · Multi-round confirmation under reuse and drift.** How should validation be allocated when selection sets are reused, tasks are expensive, and the deployment distribution changes? Required outputs include reuse count, fresh-test cadence, candidate history, and explicit assumptions behind any finite-class or reusable-holdout analysis.
 
-**6 · Quantifying stability–plasticity.** A smaller edit budget means less forgetting and slower improvement. Making this a proposition requires an assumption bounding the behavioral reach of an edit, and no defensible one is currently available.
+**6 · Merging independently evolved lineages.** How should two harness branches align state, dependencies, and behavior before merge? Local diffs from each branch do not establish the behavior of their composition, so the merged state may require a new regression and safety evaluation rather than inherited approval.
 
-**7 · When to restart rather than continue.** Target drift accumulates linearly while the confirmation slack grows as $\sqrt{T}$, so past some horizon re-running Round-0 dominates incremental evolution. Locating that crossover is a cheap experiment that no published work appears to have run.
-
-**8 · Model–harness co-design, as a checkable loop.** The proposition is not that componentization produces intelligence. Three published observations motivate a joint loop: weaker models gain more from harness optimization, no universal harness is optimal across models, and agent capability is not determined by model intelligence alone. The loop: traces expose a recurring failure, the harness proposes a local patch or the traces become training evidence, independent tasks confirm the gain and the absence of regression, stable experience is distilled into general capability, and **after the model improves the original scaffolding can be deleted while the cross-task gain persists.** The last step is the evidence: long-term progress shows as scaffolding shrinking, not as an accumulating pile of undeletable rules.
+**7 · Model–harness co-design and distillation.** Can harness improvements confirmed on fresh tasks be distilled into model training or a smaller reusable component? The test is whether the updated model preserves fresh-task gains after compensating scaffolding is removed or simplified. Without that ablation, rule accumulation is not evidence of capability internalization.
 
 ## Companion Documents
 
 | Document | Contents |
 |---|---|
-| [`docs/zo-operator-map.md`](docs/zo-operator-map.md) | The full ZO operator table with per-work notes, plus the exact point where each text-space analogy breaks |
-| [`docs/pac-stability.md`](docs/pac-stability.md) | Complete statements and proofs of Propositions A, A′, B, B-1, B-2, C, with the assumption audit |
-| [`docs/audit-table.md`](docs/audit-table.md) | Per-system stability/confirmation audit, with the evidence status of each entry marked |
-| [`docs/glossary.md`](docs/glossary.md) | All symbols and metric abbreviations used in this list |
+| [`docs/zo-operator-map.md`](docs/zo-operator-map.md) | Classical operator requirements, the corresponding HarnessOpt roles, and where each analogy stops |
+| [`docs/pac-stability.md`](docs/pac-stability.md) | Fixed-candidate and finite-class validation bounds, with their assumptions and non-conclusions |
+| [`docs/audit-table.md`](docs/audit-table.md) | A compact protocol audit separating data reuse, gate action, evaluator protection, and rollback |
+| [`docs/glossary.md`](docs/glossary.md) | Symbols and protocol terms used across the repository |
 
 ---
 
@@ -586,18 +641,20 @@ Stated as questions that experiment can settle, not as designs asserted to work.
 
 PRs are very welcome. This list has one requirement beyond the usual:
 
-**Keep the three sentence types separate.** When adding an entry:
-- claims must be attributable to a specific paper (section or experimental setting where it matters);
-- claims are this list's comparison under a unified frame and must not be presented as the original paper's conclusion;
-- claims must read as recommendations ("should report", "may serve as a protocol option"), never as descriptions of current practice.
+**Keep three sentence types separate.** When adding an entry:
+
+- facts must be attributable to a specific paper and experimental setting;
+- interpretations from this list must be labelled as interpretations;
+- recommendations must read as recommendations, not as descriptions of current practice.
 
 Also:
-- Place the work on **all three axes** where possible: level (L0–L5), `[ZO: operator]`, `[PAC: class]`.
-- For a `[PAC: independent]` claim, say **what the split actually is** and **whether it is reused across rounds**. "Ran a test" is not independent confirmation.
+
+- Place the work on **all three axes** where possible: level (L0–L5), `[ZO analogy: role]`, and `[Gate: protocol]`.
+- For a `[Gate: held-out]` claim, say **what the split actually is** and **whether it is reused across rounds**. "Ran a test" is not independent confirmation.
 - If a system's gate strength is unverified from the primary source, mark it **`待核实 / unverified`** rather than inferring it from the level number or from secondary summaries.
 - Use `†` for preprints. Prefer the canonical venue; otherwise the arXiv abstract page.
 
-**Accuracy note.** Entries marked `†` include 2025–2026 preprints whose IDs, authorship, or venues may still change. Verify links before citing in formal work. Where this list assigns a ZO operator or PAC class, that assignment is this list's reading, not the paper's self-description.
+**Accuracy note.** Entries marked `†` include 2025–2026 preprints whose authorship or venue may still change. Verify metadata before formal citation. ZO analogies and gate labels are this list's interpretations, not the papers' self-descriptions.
 
 ---
 
