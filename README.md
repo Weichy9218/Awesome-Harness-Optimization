@@ -1,6 +1,6 @@
 # Awesome Harness Optimization
 
-**A curated, theory-organized reading list on Harness Optimization (HarnessOpt): how the software system *around* a frozen LLM proposes, validates, and persists edits to itself.**
+**A curated, theory-organized reading list on Harness Optimization (HarnessOpt): how the software system *around* a frozen LLM proposes edits to itself, and what it takes to confirm one is worth keeping.**
 
 [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
@@ -597,17 +597,18 @@ Also:
 - If a system's gate strength is unverified from the primary source, mark it **`待核实 / unverified`** rather than inferring it from the level number or from secondary summaries.
 - Use `†` for preprints. Prefer the canonical venue; otherwise the arXiv abstract page.
 
-**Accuracy note.** Entries marked `†` include 2025–2026 preprints whose IDs, authorship, or venues may still change. Verify links before citing in formal work. Where this list assigns a ZO operator or PAC class, that assignment is — this list's reading, not the paper's self-description.
+**Accuracy note.** Entries marked `†` include 2025–2026 preprints whose IDs, authorship, or venues may still change. Verify links before citing in formal work. Where this list assigns a ZO operator or PAC class, that assignment is this list's reading, not the paper's self-description.
 
 ---
 
 ## Citation
 
 ```bibtex
-@misc{awesome_harness_optimization,
-  title  = {Awesome Harness Optimization: A ZO and PAC/Stability View of Harness Optimization},
-  year   = {2026},
-  howpublished = {\url{https://github.com/<your-org>/Awesome-Harness-Optimization}}
+@misc{propose_and_confirm_2026,
+  title        = {Propose and Confirm: A Zeroth-Order and PAC View of Agent Harness Optimization},
+  author       = {Wei, Chenyang},
+  year         = {2026},
+  howpublished = {\url{https://github.com/Weichy9218/Awesome-Harness-Optimization}}
 }
 ```
 

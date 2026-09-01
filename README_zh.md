@@ -1,6 +1,6 @@
 # Awesome Harness Optimization
 
-**一份按理论组织的 Harness Optimization（HarnessOpt）阅读清单：围绕一个冻结 LLM 的软件系统，如何对自身提出修改、验证修改、并把修改固化下来。**
+**一份按理论组织的 Harness Optimization（HarnessOpt）阅读清单：围绕一个冻结 LLM 的软件系统如何对自身提出修改，以及确认一处修改值得保留需要什么条件。**
 
 [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#贡献)
@@ -604,10 +604,11 @@ L2–L4 系统所依托的机制。它们的贡献*就是*算子。
 ## 引用
 
 ```bibtex
-@misc{awesome_harness_optimization,
-  title  = {Awesome Harness Optimization: A ZO and PAC/Stability View of Harness Optimization},
-  year   = {2026},
-  howpublished = {\url{https://github.com/<your-org>/Awesome-Harness-Optimization}}
+@misc{propose_and_confirm_2026,
+  title        = {Propose and Confirm: A Zeroth-Order and PAC View of Agent Harness Optimization},
+  author       = {Wei, Chenyang},
+  year         = {2026},
+  howpublished = {\url{https://github.com/Weichy9218/Awesome-Harness-Optimization}}
 }
 ```
 
