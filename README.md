@@ -32,7 +32,7 @@
   - [II.2 Multi-round reuse: the reachable-set bound](#ii2-multi-round-reuse-the-reachable-set-bound)
   - [II.3 What follows for the acceptance gate](#ii3-what-follows-for-the-acceptance-gate)
 - [Paper List](#paper-list)
-  - [1. Foundations and the Guarantee Ladder](#1-foundations-and-the-guarantee-ladder)
+  - [1. Background](#1-background)
   - [**2. The Editable Surface: L0–L5**](#2-the-editable-surface-l0l5)
   - [3. Proposal Mechanisms](#3-proposal-mechanisms-how-run-evidence-becomes-an-edit)
   - [4. Validation Protocols](#4-validation-protocols-how-a-candidate-enters-persistent-state)
@@ -159,7 +159,7 @@ The second column names the classical derivative-free operator each engineering 
 | **Localized edit** | $\dfrac{f(s+\mu e_i)-f(s)}{\mu}\,e_i$ | restrict a proposal to one entry, module, file, or subgraph | SkillAdaptor, Trace2Skill, SkillWeaver, AgentSquare, MASS, AlphaEvolve, Meta-Harness, AHE |
 | **Bounded edit** | $s_{k+1}\in\mathcal{B}(s_k,\Delta_k)$ | limit description-space change per round | SkillOpt ($L_t: 4 \to 2$), SkillOpt-Lite, SkillForge, SoftSkill ($m{=}32$), ACE, Self-Harness |
 | **Search memory** | $\hat g_{\mathrm{cv}}=\hat g-c+\mathbb{E}[c]$ | steer proposals away from known-dead directions; novelty rejection | SkillOpt rejected buffer, ShinkaEvolve, GEPA, Meta-Harness |
-| **Archive or population** | $\widetilde{s}\in\operatorname{Select}(\mathcal{A}_t;R)$ | retain, recombine, or diversify candidates | Promptbreeder, EvoPrompt, ADAS, AFlow, MaAS, ELM, FunSearch, AlphaEvolve, DGM, CORAL, AIDE |
+| **Archive or population** | $\widetilde{s} \in \mathrm{Select}(\mathcal{A}_t; R)$ | retain, recombine, or diversify candidates | Promptbreeder, EvoPrompt, ADAS, AFlow, MaAS, ELM, FunSearch, AlphaEvolve, DGM, CORAL, AIDE |
 | **Adaptive schedule** | step size or radius set from improvement history | allocate exploration budget by improvement and stagnation | AdaEvolve, ShinkaEvolve, ThetaEvolve, AFlow |
 
 The rows are not mutually exclusive: SkillOpt occupies four of them at once. The taxonomy classifies mechanisms, not papers.
@@ -296,33 +296,39 @@ The assumptions and derivations behind these statements are in [`docs/pac-stabil
 
 ## Paper List
 
-**Organization.** §1 gives the foundations and the guarantee ladder motivating both axes. **§2 is the core: the whole editable surface L0–L5 in one section.** §3 and §4 then re-index the *same* works by the two analytical axes — §3 by the proposal mechanism, §4 by the validation protocol. §5 covers evaluators and documented failure modes; §6 marks the boundaries.
+**Organization.** §1 is background. **§2 is the core: the whole editable surface L0–L5 in one section.** §3 and §4 re-index the *same* works by the two analytical axes — §3 by proposal mechanism, §4 by validation protocol. §5 covers evaluators and documented failure modes; §6 marks the boundaries.
 
-A work appearing in §2, §3, and §4 is not counted three times: §2 records what it edits, §3 how it proposes, §4 what its gate licenses one to conclude.
+A work appearing in §2, §3, and §4 is not counted three times: §2 records what it edits, §3 how it proposes, §4 what its gate lets you conclude.
 
 **Entry format.** `**Name** — "Title". Authors. Venue Year. [[paper]](link) — one line tying it to HarnessOpt. [ZO analogy: role] [Gate: protocol]`
 
-`[ZO analogy: …]` is this list's interpretation of the proposal mechanism. `[Gate: …]` records the data relationship used for persistence: `open`, `search-set`, `held-out`, `fresh test`, `human review`, or `unverified`. A held-out selection set may still be reused adaptively; only a locked final test is independent of the completed selection process. `†` marks a recent record whose current bibliographic metadata should be rechecked before citation.
+`[ZO analogy: …]` is our reading of the proposal mechanism, not the paper's own claim. `[Gate: …]` records the data relationship used for persistence: `open`, `search-set`, `held-out`, `fresh test`, `human review`, or `unverified`. `†` marks a recent posting whose metadata may still change — recheck before citing.
 
 ---
 
-### 1. Foundations and the Guarantee Ladder
+### 1. Background
 
-This section exists to answer one question: *in what sense can a self-modification be judged worth keeping?* Three reference points have been proposed historically. HarnessOpt sits in the middle one, which is where both axes are aimed.
+The idea that a system might improve itself is old. Good (1966) described a machine that designs better machines; Schmidhuber (2003) asked what it would take to do that responsibly, and answered: rewrite only when you can prove the rewrite helps. Yudkowsky (2008) named the loop. For decades this stayed a thought experiment, because nothing could actually write the next version of itself.
 
-| Reference point | How a modification is judged | How this list treats it |
+Language agents changed that, but not in the way the early work assumed. What agents can edit is not their own weights — it is the software around them: prompts, memory files, skill libraries, workflow graphs, tool code, the harness itself. Weng (2026) makes the point directly: the self-improvement loop rarely starts with weights, it runs through the scaffolding. That is the subject of this list.
+
+The proof requirement did not survive the transition. No current system proves anything about its edits; they run tasks and compare scores. So the question becomes: **when a system cannot prove an edit is good, what can it establish instead?** Three answers have been given, and they are worth keeping distinct because papers routinely claim the second while doing the third.
+
+| | What it takes to keep an edit | Status |
 |---|---|---|
-| **Formal proof** | Executed only after the system internally proves it beneficial | Historical anchor; not required of any current system |
-| **Probabilistic confirmation** | Degradation or selection bias controlled at a stated probability | **The target of [Axis II](#axis-ii--pac-and-stability)** — stated as an object of study, not as a solved problem |
-| **Empirical score** | Scores higher on some tasks | The common practice; §4 analyzes its boundary |
+| **Proof** | the system internally proves the rewrite improves utility | Schmidhuber's position; no current system does this |
+| **Probabilistic confirmation** | degradation and selection bias are controlled at a stated probability | what [Axis II](#axis-ii--pac-and-stability) is about — an open problem, not a solved one |
+| **A higher score** | the edit scored better on some tasks | what nearly everyone actually does; §4 covers what it does and does not license |
 
-- **Gödel Machines: Self-Referential Universal Problem Solvers Making Provably Optimal Self-Improvements** — J. Schmidhuber. *arXiv* 2003. [[paper]](https://arxiv.org/abs/cs/0309048) — Self-rewrite only upon an internal proof of utility gain. The upper rung. Its position is that if a rewrite's utility cannot be proven, no more can be said; this list's position is that *unprovable is not unanalyzable* — ZO describes the search-side information structure, PAC the confirmation-side sample conditions.
-- **Speculations Concerning the First Ultraintelligent Machine** — I. J. Good. *Advances in Computers* 1966. [[paper]](https://doi.org/10.1016/S0065-2458%2808%2960418-0) — Origin of the intelligence-explosion idea via self-design; included only as historical motivation.
+The gap between the second and third rows is the reason this list exists.
+
+- **Speculations Concerning the First Ultraintelligent Machine** — I. J. Good. *Advances in Computers* 1966. [[paper]](https://doi.org/10.1016/S0065-2458%2808%2960418-0) — Where the intelligence-explosion idea starts. Historical motivation only.
+- **Gödel Machines: Self-Referential Universal Problem Solvers Making Provably Optimal Self-Improvements** — J. Schmidhuber. *arXiv* 2003. [[paper]](https://arxiv.org/abs/cs/0309048) — Rewrite only on an internal proof of utility gain. The strictest answer anyone has given, and the reason the weaker answers need to be stated carefully: unprovable is not unanalyzable.
 - **Recursive Self-Improvement** — E. Yudkowsky. *LessWrong* 2008. [[post]](https://www.lesswrong.com/posts/JBadX7rwdcRFzGuju/recursive-self-improvement) — Names the RSI feedback loop.
-- **Harness Engineering for Self-Improvement** — Lilian Weng. *Lil'Log* 2026. [[blog]](https://lilianweng.github.io/posts/2026-07-04-harness/) — Frames the harness as the near-term substrate for self-improvement: the loop rarely starts with weights, it runs through the scaffolding.
-- **Code as Agent Harness** — Ning et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.18747) — Surveys code as executable agent infrastructure and identifies verification, recovery, state consistency, and replayability as evaluation challenges.
-- **A Survey of Self-Evolving Agents: What, When, How, and Where to Evolve** — Gao et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2507.21046) — Taxonomy across models, memory, tools, architecture; source of the capability-dimension and time-scale distinctions this list adapts.
-- **A Comprehensive Survey of Self-Evolving AI Agents** — Fang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2508.07407) — Bridges foundation models and lifelong agentic systems; proposes "Three Laws of Self-Evolving AI Agents".
+- **Harness Engineering for Self-Improvement** — Lilian Weng. *Lil'Log* 2026. [[blog]](https://lilianweng.github.io/posts/2026-07-04-harness/) — Argues the near-term loop runs through the scaffolding rather than the weights.
+- **Code as Agent Harness** — Ning et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.18747) — Surveys code as executable agent infrastructure; names verification, recovery, state consistency, and replayability as open evaluation problems.
+- **A Survey of Self-Evolving Agents: What, When, How, and Where to Evolve** — Gao et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2507.21046) — Taxonomy across models, memory, tools, and architecture. This list takes its capability-dimension and time-scale distinctions from here.
+- **A Comprehensive Survey of Self-Evolving AI Agents** — Fang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2508.07407) — Connects foundation models to lifelong agentic systems; proposes "Three Laws of Self-Evolving AI Agents".
 
 ---
 
@@ -428,23 +434,24 @@ This section exists to answer one question: *in what sense can a self-modificati
 *Harness edits and weight updates in one loop.* Included as a boundary, not a core comparison object. Once weights move, the base-model-fixed definition is suspended and any analysis must treat software and parameters as a joint state.
 
 - **SIA** — "SIA: Self Improving AI with Harness & Weight Updates". Hebbar et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.27276) — A Feedback-Agent decides, per iteration, whether to update the harness or the model weights. `[ZO analogy: boundary — mixed]` `[Gate: search-set]`
+- **HarnessX** — "HarnessX: A Composable, Adaptive, and Evolvable Agent Harness Foundry". Chen et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.14249) [[code]](https://github.com/Darwin-Agent/HarnessX) — Splits the harness into `ModelConfig` and `HarnessConfig`, with pluggable processors on the agent loop's hooks as the edit unit. A MetaAgent proposes the next config; a validator runs canonicalize, contract, dry-fire, and replay checks before the round accepts. Harness-only and harness-plus-weight rounds are run as separate arms, which is what makes it readable as a boundary case rather than a confound. `[ZO analogy: localized edit + boundary — mixed]` `[Gate: held-out]`
 - **SEAL** — "Self-Adapting Language Models". Zweiger et al. *NeurIPS* 2025. [[paper]](https://arxiv.org/abs/2506.10943) — The model generates its own "self-edits" (finetuning data plus directives), applied via SFT inside an RL loop. `[ZO analogy: boundary — RL]` `[Gate: search-set]`
 
 ---
 
 ### 3. Proposal Mechanisms: How Run Evidence Becomes an Edit
 
-Related surveys have catalogued prompt optimization and self-evolving agents by method family. This section does not repeat that. It maps work onto **how a query signal becomes a modification proposal** — the editable range is §2's subject, the acceptance protocol is §4's.
+Related surveys already catalogue prompt optimization and self-evolving agents by method family. This section asks a different question: **how does a query signal become a modification proposal?** What can be edited is §2's subject; whether the edit should persist is §4's.
 
-Scalar returns answer *which candidates are worth continuing*. Trace feedback further answers *where the failure is and what might change*. Candidate archives decide *what to keep, mutate, or recombine*. These compose; most systems use two or three.
+Three signals, three jobs. A scalar return tells you which candidate to continue with. A trace additionally tells you where the run went wrong and what might change. An archive tells you what to keep, mutate, or recombine. Most systems use two or three of them, and the columns below are about what each signal can and cannot carry.
 
 | Signal | What it can support | What it cannot | Work |
 |---|---|---|---|
-| **Scalar return and ranking** | Comparing candidates or versions | Locating a cause; justifying a specific edit | APE, OPRO, DSPy, MIPROv2, Reflexion, Voyager |
-| **Trajectory and error logs** | Localizing failure; proposing a plausible patch | Correct attribution; evidence for acceptance | ProTeGi, TextGrad, SkillCAT, GEPA, AHE, Trace2Skill |
-| **Search history and archive** | Diversity, novelty, avoiding dead directions | Whether a retained candidate generalizes | Promptbreeder, ADAS, AFlow, ELM, AlphaEvolve, ShinkaEvolve, DGM |
+| **Scalar return and ranking** | comparing candidates or versions | locating a cause; justifying one specific edit | APE, OPRO, DSPy, MIPROv2, Reflexion, Voyager |
+| **Trajectory and error logs** | locating failure; proposing a plausible patch | correct attribution; evidence for acceptance | ProTeGi, TextGrad, SkillCAT, GEPA, AHE, Trace2Skill |
+| **Search history and archive** | diversity, novelty, avoiding dead directions | whether a retained candidate generalizes | Promptbreeder, ADAS, AFlow, ELM, AlphaEvolve, ShinkaEvolve, DGM |
 
-The scalar objective channel is zeroth-order; language feedback is additional semantic side information, not a verifiable gradient. Localized edits, edit budgets, and rejected buffers constrain proposals but do not justify persistence. Acceptance, non-regression, and rollback remain §4's gate $G$.
+The objective channel is zeroth-order; language feedback adds semantic side information, not a verifiable gradient. Localized edits, edit budgets, and rejected buffers constrain where a proposal can reach — they do not make it correct. However good the proposal mechanism, acceptance is still §4's gate $G$.
 
 #### 3.1 Representative proposal-role inventory
 
@@ -518,23 +525,29 @@ Cited for operator definitions and their known properties; none is about agents.
 
 ### 4. Validation Protocols: How a Candidate Enters Persistent State
 
-Two fields determine the statistical reading: **which data can block persistence**, and **how often those data are reused**. Runtime isolation, human review, and rollback are separate governance fields.
+We classify gates by two fields: **which data can block persistence**, and **how many times those data are reused**. Everything else — runtime isolation, human review, rollback — is recorded separately, because it controls what happens when an edit is wrong, not what the score means.
 
-| Protocol | Persistence rule | Statistical reading |
+We use two fields rather than one because the words in the literature do not separate these cases. "Held-out", "validation", and "independent" are all used for setups ranging from a set that is scored once to a set that is `argmax`-ed for fifty rounds. Those have different statistical readings and we give them different labels.
+
+| Protocol | Persistence rule | What a score on it supports |
 |---|---|---|
-| **Open loop** | proposed state is written without a blocking evaluation | no candidate-confirmation claim |
-| **Search-set gate** | the data that drive proposals also rank or accept candidates | empirical selection on observed tasks; a final locked test may still evaluate the completed procedure |
-| **Held-out gate** | a separate selection or regression set can reject candidates | useful separation, but adaptive reuse makes later candidates depend on that set |
-| **Fresh confirmation** | a candidate fixed by the completed search is evaluated once on untouched data | fixed-candidate bound in §II.1 applies |
-| **Human or retrospective gate** | review or later checks can block or undo persistence | governance evidence; not statistical independence unless fresh sampled tasks are also used |
+| **Open loop** | the proposal is written with no evaluation that could block it | nothing about the candidate; the edit was not tested before it persisted |
+| **Search-set gate** | the data driving proposals also rank or accept candidates | empirical selection on observed tasks; a locked final test can still evaluate the finished procedure |
+| **Held-out gate** | a separate selection or regression set can reject candidates | real separation, but reuse across rounds makes later candidates depend on the set |
+| **Fresh confirmation** | a candidate fixed by the finished search is scored once on untouched data | the fixed-candidate bound in [§II.1](#ii1-two-bounds-two-different-jobs) applies |
+| **Human or retrospective gate** | review, or later checks, can block or undo persistence | evidence about governance and recovery, not statistical independence |
 
-SkillOpt reports a three-way split and locks the test set for final reporting; its validation set is still used for selection. SkillOpt-Lite uses held-out selection with staged compile, smoke, and full evaluation. AHE uses retrospective prediction and rollback. Ouroboros uses reviewed commits. These are different protocols and should not share one `independent` label.
+Two consequences we want to be explicit about. A held-out set is not fresh data once its scores have steered the search — freshness is a property of the *history*, not of how the split was created. And an open-loop system is not thereby careless: for many L1 memory systems, writing every reflection is the design. It just means the score cannot be read as confirmation.
 
-#### 4.1 Three observations the table makes visible
+#### 4.1 Three things this classification separates
 
-Editable-surface size, proposal mechanism, and gate protocol must be reported separately. None can be inferred from another.
+**Surface size does not predict gate strength.** Some of the largest editable surfaces here ship with no gate at all, while several of the narrowest skill editors run three-way splits.
 
-Representative protocol examples, with uncertain fields marked `unverified`, are in [`docs/audit-table.md`](docs/audit-table.md).
+**Proposal sophistication does not predict gate strength either.** The systems with the richest operator inventories are not the ones with the most careful validation.
+
+**Governance and statistics answer different questions.** Sandboxing, review, and rollback decide what an incorrect edit can damage. Data relationship and reuse count decide whether the reported improvement is real. A system can be strong on one and silent on the other.
+
+Per-system protocol fields, with anything we could not confirm from a primary source marked `unverified`, are in [`docs/audit-table.md`](docs/audit-table.md).
 
 #### 4.2 Acceptance should be a joint condition
 

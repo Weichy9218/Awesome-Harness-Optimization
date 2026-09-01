@@ -32,7 +32,7 @@
   - [II.2 多轮复用与可达集界](#ii2-多轮复用与可达集界)
   - [II.3 对接受门的推论](#ii3-对接受门的推论)
 - [论文列表](#论文列表)
-  - [1. 基础与保证阶梯](#1-基础与保证阶梯)
+  - [1. 背景](#1-背景)
   - [**2. 可编辑面 L0–L5**](#2-可编辑面-l0l5)
   - [3. 提案机制](#3-提案机制运行证据如何变成一次编辑)
   - [4. 验证协议](#4-验证协议候选如何进入持久-state)
@@ -159,7 +159,7 @@ Y(s,z)=R\!\left(H_s(M,z)\right),
 | **局部编辑** | $\dfrac{f(s+\mu e_i)-f(s)}{\mu}\,e_i$ | 将提议限制在一个条目、模块、文件或子图 | SkillAdaptor, Trace2Skill, SkillWeaver, AgentSquare, MASS, AlphaEvolve, Meta-Harness, AHE |
 | **有界编辑** | $s_{k+1}\in\mathcal{B}(s_k,\Delta_k)$ | 限制每轮在描述空间中的改动 | SkillOpt（$L_t: 4 \to 2$）, SkillOpt-Lite, SkillForge, SoftSkill（$m{=}32$）, ACE, Self-Harness |
 | **搜索记忆** | $\hat g_{\mathrm{cv}}=\hat g-c+\mathbb{E}[c]$ | 使提议避开已知的死方向；novelty 拒绝采样 | SkillOpt rejected buffer, ShinkaEvolve, GEPA, Meta-Harness |
-| **档案或种群** | $\widetilde{s}\in\operatorname{Select}(\mathcal{A}_t;R)$ | 保留、重组或分散候选 | Promptbreeder, EvoPrompt, ADAS, AFlow, MaAS, ELM, FunSearch, AlphaEvolve, DGM, CORAL, AIDE |
+| **档案或种群** | $\widetilde{s} \in \mathrm{Select}(\mathcal{A}_t; R)$ | 保留、重组或分散候选 | Promptbreeder, EvoPrompt, ADAS, AFlow, MaAS, ELM, FunSearch, AlphaEvolve, DGM, CORAL, AIDE |
 | **自适应调度** | 按改进历史设定步长或半径 | 按改进幅度与停滞情况分配探索预算 | AdaEvolve, ShinkaEvolve, ThetaEvolve, AFlow |
 
 各行不互斥：SkillOpt 同时占四行。这个分类划分的是机制，不是论文。
@@ -296,32 +296,38 @@ O\!\left(\sqrt{\frac{T\ln|\mathcal{U}_L|+\ln(1/\delta)}{2m}}\right).
 
 ## 论文列表
 
-**组织方式。** §1 给出基础与推动两条轴的保证阶梯。**§2 是主体：整个可编辑面 L0–L5 集中在一节。** §3 与 §4 把*同一批*工作按两条分析轴重排——§3 按提案机制，§4 按验证协议。§5 覆盖评测器与已记录的失败模式；§6 标出边界。
+**组织方式。** §1 是背景。**§2 是主体：整个可编辑面 L0–L5 集中在一节。** §3 与 §4 把*同一批*工作按两条分析轴重排——§3 按提案机制，§4 按验证协议。§5 覆盖评测器与已记录的失败模式；§6 标出边界。
 
-一项工作同时出现在 §2、§3、§4 不等于被计三次：§2 记录它改什么，§3 记录它怎么提案，§4 记录它的门许可得出什么结论。
+一项工作同时出现在 §2、§3、§4 不等于被计三次：§2 记录它改什么，§3 记录它怎么提案，§4 记录它的 gate 能让你得出什么结论。
 
 **条目格式。** `**Name** — "Title". Authors. Venue Year. [[paper]](link) — 一句话说明它与 HarnessOpt 的关系。[ZO analogy: role] [Gate: protocol]`
 
-`[ZO analogy: …]` 是本清单对提议机制的解释。`[Gate: …]` 记录持久化所用数据的关系，包括 `open`、`search-set`、`held-out`、`fresh test`、`human review` 和 `unverified`。held-out selection 集如果被反复使用，仍会对后续候选产生自适应依赖；只有锁定的最终 test 才独立于完整选择过程。`†` 表示该条近期记录在正式引用前应重新核对 bibliographic metadata。
+`[ZO analogy: …]` 是我们对提议机制的读法，不是论文自己的说法。`[Gate: …]` 记录持久化所用数据的关系：`open`、`search-set`、`held-out`、`fresh test`、`human review`、`unverified`。`†` 表示该条为近期投稿，元数据仍可能变动，引用前请重新核对。
 
 ---
 
-### 1. 基础与保证阶梯
+### 1. 背景
 
-本节只回答一个问题：*在什么意义上可以判定一次自我修改值得保留？* 历史上提出过三个参照点。HarnessOpt 位于中间那个，两条轴都瞄准它。
+系统改进自身这个想法很早就有。Good（1966）设想过一台能设计出更好机器的机器；Schmidhuber（2003）追问怎样才算负责任地做这件事，答案是：只有能证明重写有益时才重写。Yudkowsky（2008）给这个循环起了名字。此后很长时间它停留在思想实验，因为没有东西真的能写出自己的下一版。
 
-| 参照点 | 修改如何被判定 | 本清单如何处理 |
+语言 agent 让这件事落地了，但落点和早期设想不同。agent 能改的不是自己的权重，而是它周围的软件：prompt、memory 文件、skill 库、workflow 图、工具代码，以及 harness 本身。Weng（2026）说得很直接：自改进循环很少从权重开始，它跑在脚手架上。这就是本清单的对象。
+
+证明这个要求没能一起迁移过来。现在没有任何系统在证明什么，它们跑任务、比分数。于是问题变成：**当系统无法证明一次修改是好的，它还能确立什么？** 历史上有三种答案，值得分开来讲，因为论文经常声称第二种而实际做的是第三种。
+
+| | 保留一次修改需要什么 | 现状 |
 |---|---|---|
-| **形式化证明** | 系统内部证明有益之后才执行 | 历史锚点；不要求任何现有系统达到 |
-| **概率性确认** | 退化或选择偏差被控制在给定概率下 | **[Axis II](#axis-ii--pac-与稳定性) 的目标**——作为研究对象陈述，不是已解决的问题 |
-| **经验分数** | 在某些任务上分数更高 | 通行做法；§4 分析它的边界 |
+| **证明** | 系统内部证明该重写提升效用 | Schmidhuber 的立场；现有系统没有做到的 |
+| **概率性确认** | 退化与选择偏差被控制在给定概率内 | [Axis II](#axis-ii--pac-与稳定性) 讨论的对象——一个开放问题，不是已解决的问题 |
+| **分数更高** | 修改在某些任务上得分更好 | 几乎所有人实际在做的；§4 讲它能支持和不能支持什么 |
 
-- **Gödel Machines: Self-Referential Universal Problem Solvers Making Provably Optimal Self-Improvements** — J. Schmidhuber. *arXiv* 2003. [[paper]](https://arxiv.org/abs/cs/0309048) — 只有在内部证明效用提升后才自我重写。阶梯的上端。它的立场是重写效用无法证明就无话可说；本清单的立场是*不可证明不等于不可分析*——ZO 描述搜索侧的信息结构，PAC 描述确认侧的样本条件。
-- **Speculations Concerning the First Ultraintelligent Machine** — I. J. Good. *Advances in Computers* 1966. [[paper]](https://doi.org/10.1016/S0065-2458%2808%2960418-0) — 通过自设计导向智能爆炸这一想法的来源，仅作历史动机。
+第二行和第三行之间的落差，就是本清单存在的理由。
+
+- **Speculations Concerning the First Ultraintelligent Machine** — I. J. Good. *Advances in Computers* 1966. [[paper]](https://doi.org/10.1016/S0065-2458%2808%2960418-0) — 智能爆炸这个想法的起点。仅作历史动机。
+- **Gödel Machines: Self-Referential Universal Problem Solvers Making Provably Optimal Self-Improvements** — J. Schmidhuber. *arXiv* 2003. [[paper]](https://arxiv.org/abs/cs/0309048) — 只有内部证明效用提升才自我重写。这是给出过的最严格的答案，也正因为如此，更弱的答案需要被谨慎陈述：不可证明不等于不可分析。
 - **Recursive Self-Improvement** — E. Yudkowsky. *LessWrong* 2008. [[post]](https://www.lesswrong.com/posts/JBadX7rwdcRFzGuju/recursive-self-improvement) — 命名了 RSI 反馈循环。
-- **Harness Engineering for Self-Improvement** — Lilian Weng. *Lil'Log* 2026. [[blog]](https://lilianweng.github.io/posts/2026-07-04-harness/) — 把 harness 视为近期自改进的载体：循环很少从权重开始，它跑在脚手架上。
-- **Code as Agent Harness** — Ning et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.18747) — 综述 code 作为可执行 agent 基础设施的作用，并把 verification、recovery、state consistency 和 replayability 列为评测挑战。
-- **A Survey of Self-Evolving Agents: What, When, How, and Where to Evolve** — Gao et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2507.21046) — 覆盖模型、memory、工具、架构的分类体系；本清单采用的能力维度与时间尺度区分出自这里。
+- **Harness Engineering for Self-Improvement** — Lilian Weng. *Lil'Log* 2026. [[blog]](https://lilianweng.github.io/posts/2026-07-04-harness/) — 主张近期的自改进循环跑在脚手架上，而不是权重上。
+- **Code as Agent Harness** — Ning et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.18747) — 综述 code 作为可执行 agent 基础设施；把 verification、recovery、state consistency 和 replayability 列为待解决的评测问题。
+- **A Survey of Self-Evolving Agents: What, When, How, and Where to Evolve** — Gao et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2507.21046) — 覆盖模型、memory、工具、架构的分类体系。本清单的能力维度与时间尺度区分取自这里。
 - **A Comprehensive Survey of Self-Evolving AI Agents** — Fang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2508.07407) — 连接基础模型与终身 agentic 系统；提出 "Three Laws of Self-Evolving AI Agents"。
 
 ---
@@ -428,23 +434,24 @@ O\!\left(\sqrt{\frac{T\ln|\mathcal{U}_L|+\ln(1/\delta)}{2m}}\right).
 *harness 编辑与权重更新在同一循环内。* 作为边界收录，不作为核心比较对象。权重一旦变动，“基座模型固定”的条件就不成立，分析对象必须改为联合 state，本文的 harness-only 有限类计数不能直接使用。
 
 - **SIA** — "SIA: Self Improving AI with Harness & Weight Updates". Hebbar et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.27276) — Feedback-Agent 逐轮决定更新 harness 还是模型权重。`[ZO analogy: boundary — mixed]` `[Gate: search-set]`
+- **HarnessX** — "HarnessX: A Composable, Adaptive, and Evolvable Agent Harness Foundry". Chen et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2606.14249) [[code]](https://github.com/Darwin-Agent/HarnessX) — 把 harness 拆成 `ModelConfig` 与 `HarnessConfig`，编辑单元是挂在 agent loop 各 hook 上的可插拔 processor。MetaAgent 提出下一版配置，validator 在接受前跑 canonicalize、contract、dry-fire 和 replay 检查。harness-only 与 harness 加权重两种轮次分开跑，这一点使它可以作为边界情形阅读，而不是一个混淆项。`[ZO analogy: localized edit + boundary — mixed]` `[Gate: held-out]`
 - **SEAL** — "Self-Adapting Language Models". Zweiger et al. *NeurIPS* 2025. [[paper]](https://arxiv.org/abs/2506.10943) — 模型生成自己的 "self-edits"（微调数据加指令），在 RL 循环中经 SFT 应用。`[ZO analogy: boundary — RL]` `[Gate: search-set]`
 
 ---
 
 ### 3. 提案机制：运行证据如何变成一次编辑
 
-相关综述已经按方法家族梳理过 prompt 优化和自演化 agent，本节不重复那件事，而是把工作映射到**一个查询信号如何变成修改提案**上——可编辑范围是 §2 的题目，接受协议是 §4 的题目。
+相关综述已经按方法家族梳理过 prompt 优化和自演化 agent。本节问的是另一个问题：**一个查询信号如何变成修改提案？** 能改什么是 §2 的题目，改动该不该留下是 §4 的题目。
 
-标量回报用于比较候选，trace 反馈可辅助定位失败和生成修改，候选档案则保存搜索历史。这些信号可以组合，但不提供同一种保证。
+三种信号，三件事。标量回报告诉你该沿哪个候选走下去；trace 还告诉你哪一步出了问题、可能该改什么；档案告诉你该保留、变异还是重组。多数系统会用其中两三种，下表讲的是每种信号能承载什么、不能承载什么。
 
 | 信号 | 能支撑什么 | 不能支撑什么 | 工作 |
 |---|---|---|---|
-| **标量回报与排序** | 比较候选或版本 | 定位原因；为某个具体编辑提供依据 | APE, OPRO, DSPy, MIPROv2, Reflexion, Voyager |
+| **标量回报与排序** | 比较候选或版本 | 定位原因；为某一处具体修改提供依据 | APE, OPRO, DSPy, MIPROv2, Reflexion, Voyager |
 | **轨迹与错误日志** | 定位失败；提出看似合理的补丁 | 正确归因；接受候选的证据 | ProTeGi, TextGrad, SkillCAT, GEPA, AHE, Trace2Skill |
 | **搜索历史与档案** | 多样性、新颖性、避开死方向 | 被保留的候选是否泛化 | Promptbreeder, ADAS, AFlow, ELM, AlphaEvolve, ShinkaEvolve, DGM |
 
-语言反馈仍是携带语义侧信息的零阶查询，不是可验证的梯度。局部编辑、编辑预算和拒绝缓冲区约束的是提案的*触及范围*和重复探索，它们不制造可微对象。无论提案怎么形成，它本身都不能构成进入持久 state 的理由：接受、非回归和 rollback 仍然是 §4 的门 $G$。
+目标通道是零阶的；语言反馈补充的是语义侧信息，不是可验证的梯度。局部编辑、编辑预算和拒绝缓冲区约束的是提案能触及的范围，不能使它正确。提案机制再好，接受与否仍然是 §4 的门 $G$。
 
 #### 3.1 代表性提案角色表
 
@@ -518,23 +525,29 @@ O\!\left(\sqrt{\frac{T\ln|\mathcal{U}_L|+\ln(1/\delta)}{2m}}\right).
 
 ### 4. 验证协议：候选如何进入持久 state
 
-统计解释由两个字段决定：**哪些数据可以阻止持久化**，以及**这些数据被复用多少次**。运行时隔离、人工评审和 rollback 属于治理字段，需要另外记录。
+我们按两个字段给 gate 分类：**哪些数据可以阻止持久化**，以及**这些数据被复用多少次**。其余的——运行时隔离、人工评审、rollback——单独记录，因为它们决定的是修改出错时会怎样，不是分数意味着什么。
 
-| 协议 | 持久化规则 | 统计解释 |
+之所以用两个字段而不是一个，是因为文献里的词分不开这些情况。"held-out""validation""independent" 被用在从只打一次分到被 `argmax` 五十轮的各种设置上。它们的统计含义不同，我们给不同的标签。
+
+| 协议 | 持久化规则 | 在它上面的分数能支持什么 |
 |---|---|---|
-| **开环** | 提案未经 blocking evaluation 直接写入 | 不支持候选确认结论 |
-| **search-set gate** | 驱动提案的数据同时参与排序或接受 | 是对已观测任务的经验选择；流程结束后仍可用锁定 test 评估完整过程 |
-| **held-out gate** | 单独的 selection 或 regression 集可以拒绝候选 | 提供数据分离，但反复复用会使后续候选依赖该集合 |
-| **fresh confirmation** | 搜索完成并固定候选后，在未触碰数据上评估一次 | §II.1 的 fixed-candidate bound 适用 |
-| **人工或回溯式门** | 人工评审或后续检查可以阻止或撤销持久化 | 是治理或恢复证据；若没有 fresh task sample，不等于统计独立 |
+| **开环** | 提案直接写入，没有能拦住它的评估 | 关于候选什么也支持不了；修改在持久化前没有被检验 |
+| **search-set gate** | 驱动提案的数据同时参与排序或接受 | 在已观测任务上的经验选择；流程结束后仍可用锁定 test 评估完整过程 |
+| **held-out gate** | 单独的 selection 或 regression 集可以拒绝候选 | 确实做了分离，但跨轮复用会让后续候选依赖这个集合 |
+| **fresh confirmation** | 搜索结束、候选固定后，在未触碰的数据上打一次分 | [§II.1](#ii1-两个界及其分工) 的 fixed-candidate bound 适用 |
+| **人工或回溯式门** | 评审或后续检查可以阻止或撤销持久化 | 关于治理与恢复的证据，不是统计独立性 |
 
-SkillOpt 报告三路划分，并将 test 集锁定到最终报告；其 validation 集仍参与选择。SkillOpt-Lite 使用 held-out selection 与 compile、smoke、full 分阶段检查。AHE 使用回溯式 prediction 与 rollback，Ouroboros 使用 reviewed commit。它们不应共享同一个 `independent` 标签。
+有两点想说明白。held-out 集一旦用分数引导过搜索，就不再是 fresh data——新鲜与否是*历史*的属性，不是划分方式的属性。另外，开环不等于草率：对很多 L1 memory 系统来说，把每条反思都写进去就是设计本身。它只是意味着分数不能当作确认来读。
 
-#### 4.1 这张表让三件事变得可见
+#### 4.1 这个分类分开了三件事
 
-可编辑面大小、提案机制和 gate protocol 必须分别报告，不能互相推断。
+**可编辑面大小推不出 gate 强度。** 本清单中一些最大的可编辑面完全没有 gate，而几个最窄的 skill 编辑器跑的是三路划分。
 
-[`docs/audit-table.md`](docs/audit-table.md) 给出代表性 protocol 例子，不能从一手来源确认的字段标为 `unverified`。
+**提案机制的复杂度同样推不出 gate 强度。** 算子清单最丰富的系统，不是验证做得最细的那些。
+
+**治理和统计回答的是不同问题。** sandbox、评审和 rollback 决定一次错误修改能造成多大破坏；数据关系和复用次数决定报告出来的提升是不是真的。一个系统可以在其中一侧很强，在另一侧完全不提。
+
+逐系统的协议字段，以及我们无法从一手来源确认因而标为 `unverified` 的部分，见 [`docs/audit-table.md`](docs/audit-table.md)。
 
 #### 4.2 接受应当是一个联合条件
 
