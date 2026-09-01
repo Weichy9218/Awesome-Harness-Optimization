@@ -325,7 +325,8 @@ O\!\left(\sqrt{\frac{T\ln|\mathcal{U}_L|+\ln(1/\delta)}{2m}}\right).
 - **Speculations Concerning the First Ultraintelligent Machine** — I. J. Good. *Advances in Computers* 1966. [[paper]](https://doi.org/10.1016/S0065-2458%2808%2960418-0) — 智能爆炸这个想法的起点。仅作历史动机。
 - **Gödel Machines: Self-Referential Universal Problem Solvers Making Provably Optimal Self-Improvements** — J. Schmidhuber. *arXiv* 2003. [[paper]](https://arxiv.org/abs/cs/0309048) — 只有内部证明效用提升才自我重写。这是给出过的最严格的答案，也正因为如此，更弱的答案需要被谨慎陈述：不可证明不等于不可分析。
 - **Recursive Self-Improvement** — E. Yudkowsky. *LessWrong* 2008. [[post]](https://www.lesswrong.com/posts/JBadX7rwdcRFzGuju/recursive-self-improvement) — 命名了 RSI 反馈循环。
-- **Harness Engineering for Self-Improvement** — Lilian Weng. *Lil'Log* 2026. [[blog]](https://lilianweng.github.io/posts/2026-07-04-harness/) — 主张近期的自改进循环跑在脚手架上，而不是权重上。
+- **Harness Engineering for Self-Improvement** — Lilian Weng. *Lil'Log* 2026. [[blog]](https://lilianweng.github.io/posts/2026-07-04-harness/) — 主张近期的自改进循环跑在脚手架上而不是权重上，并列出使它无法闭合的瓶颈：评测器模糊、context 生命周期、负面结果、多样性塌缩、reward hacking、目标过于短期，以及人应处的位置。
+- **Learning Beyond Gradients** — Jiayi Weng. Blog 2026. [[post]](https://trinkle23897.github.io/learning-beyond-gradients/) — 报告由 coding agent 编写并迭代的程序化策略，在不训练任何网络的情况下于 Atari、MuJoCo 和 VizDoom 上达到 Deep RL 量级的分数。把被维护的对象命名为 *Heuristic System*，并提出 **coupling complexity**——一次更新必须同时顾及多少相互依赖的状态、规则、测试、信号与历史约束——并明确指出它不能用代码行数衡量。这是目前最接近"行为触及范围"的候选量，而编辑预算现在只能用 diff size 近似它。
 - **Code as Agent Harness** — Ning et al. *arXiv* 2026.† [[paper]](https://arxiv.org/abs/2605.18747) — 综述 code 作为可执行 agent 基础设施；把 verification、recovery、state consistency 和 replayability 列为待解决的评测问题。
 - **A Survey of Self-Evolving Agents: What, When, How, and Where to Evolve** — Gao et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2507.21046) — 覆盖模型、memory、工具、架构的分类体系。本清单的能力维度与时间尺度区分取自这里。
 - **A Comprehensive Survey of Self-Evolving AI Agents** — Fang et al. *arXiv* 2025.† [[paper]](https://arxiv.org/abs/2508.07407) — 连接基础模型与终身 agentic 系统；提出 "Three Laws of Self-Evolving AI Agents"。
@@ -621,21 +622,29 @@ O\!\left(\sqrt{\frac{T\ln|\mathcal{U}_L|+\ln(1/\delta)}{2m}}\right).
 
 ## 开放问题
 
-以下问题直接整理自两版 SURVEY-OUTLINE 的 future works，并改写为可验证的研究问题。
+每一条都写成实验可以回答的形式，并说明什么算是答案。有相关讨论的地方给出指向，因为其中几条在文献里同样开放，不只是本清单没有处理。
 
-**1 · 持久组件的生命周期契约。** 什么样的可执行 contract 能保证卸载 plugin 时清理注册项和副作用、依赖变化后重新解析兼容组合，并在拒绝候选时恢复编辑前行为？评测需要覆盖 cleanup、replay 和跨版本 recovery，不能只检查文件是否还原。
+**1 · 到底什么量界定行为触及范围？** 有界编辑是唯一有统计回报的设计选择——编辑语言越窄，[II.2](#ii2-多轮复用与可达集界) 的确认界越紧。但所有系统都用 diff size 或编辑次数来度量这个界，两者都预测不了行为走多远：改一个词可能改变一切，加十行注释可能什么都不改。Jiayi Weng 的 **coupling complexity**——一次更新必须同时顾及多少相互依赖的状态、规则、测试、信号和历史约束——是我们知道的最锐利的候选，而且它自带一条警告：代码行数是错的代理量。缺的是测量：在真实循环里埋点，记录每次提案的 coupling 足迹和它后续的回归率，看相关性是否强到足以让 edit budget 不只是工程约束。
 
-**2 · 删除与非参数遗忘。** memory 条目、规则、test 或 plugin 应在什么条件下保留、压缩、归档或删除？需要基于任务行为定义遗忘，并把 regression 与 accepted diff 联系起来，同时允许多个修改共同造成回归。
+**2 · 压缩，不只是删除。** 多数自演化工作规定怎么写而不规定怎么去掉，而且问法通常是"这条什么时候该删"。那只是问题的一半。只累积的系统即便每条都正确，最终也会无法维护，所以健康的循环需要两个操作：吸收新反馈，以及把堆积的局部补丁折叠成更简单的表示。两者都需要一个基于任务行为的保留判据——这条是否仍覆盖当前搜索邻域够得到的失败？——而不是基于年龄或长度。报告一侧同样没解决：把观察到的回归对上导致它的 accepted diff，同时不假设每次回归只有一个原因。
 
-**3 · 按确认成本划分职责。** 哪些检查可以靠近执行端完成，哪些必须交给具备 fresh tasks、重复试验和审计能力的独立 evaluator？这一架构假设应通过晋级率、验证延迟、隐私暴露、rollback 成本和跨版本失败率检验；部署位置本身不产生统计独立性。
+**3 · 覆盖行为而非文件的生命周期契约。** 精确回滚是 [II.3](#ii3-对接受门的推论) 单调性论证的前提，而 `git revert` 给不了：进程还在跑，注册项还在，缓存和已写入的 memory 还在。什么样的可执行 contract 足以保证卸载一个组件会撤销它的注册项和副作用、依赖变化能重新解析成可用配置、被拒候选让系统在行为上回到原点？评测应覆盖 cleanup、replay 和跨版本 recovery。相关：[2608.25512](https://arxiv.org/abs/2608.25512) 对可撤销副作用的系统侧处理，以及 [Code as Agent Harness](https://arxiv.org/abs/2605.18747) 提出的 verification / recovery / state consistency / replayability 四个维度。
 
-**4 · 编辑预算下的稳定性–可塑性。** edit size、受影响组件和行为触及范围如何共同影响改进速度与回归风险？description length 可以测量，但它与行为变化的关系尚不清楚；在估计这种关系之前，edit budget 只是工程约束。
+**4 · 复用、漂移与昂贵任务下的确认。** [II.2](#ii2-多轮复用与可达集界) 在多数系统并不满足的假设下，把验证复用定价为 $\sqrt{T}$；轮换在松弛量上更便宜，但要花 $Tm$ 个任务。当一次 rollout 意味着构建一个容器时，两者都负担不起。两个具体问题：reusable holdout 类机制（[1411.2664](https://arxiv.org/abs/1411.2664)、[Science 2015](https://www.science.org/doi/10.1126/science.aaa9375)）能否适用于 HarnessOpt 的查询模式——它比一般自适应分析更有结构，主要是对候选做 accept/reject——代价是多少精度？以及交叉点在哪里：目标漂移线性累积，选择松弛以 $\sqrt{T}$ 增长，越过某个 horizon 后从新的 $s_0$ 重跑就优于继续演化。第二个是便宜的实验，似乎没有人做过。
 
-**5 · 复用与漂移下的多轮确认。** selection set 被复用、任务昂贵且部署分布变化时，应如何分配 validation？至少需要报告 reuse count、fresh-test cadence、candidate history，以及 finite-class 或 reusable-holdout 分析所需的显式假设。
+**5 · 写不出来的评测器。** 集中不等式只保证损失所编码的那个指标。这覆盖了通过率，漏掉的恰恰是真正决定一次 harness 修改好不好的东西：research taste、一个结果值不值得追下去、一个由几百名工程师共同维护的 repo 是否还能维护下去。标准 sandbox RLVR 式训练几乎捕捉不到可维护性、ownership 边界、迁移成本、向后兼容和未来的调试负担。这里有两个可分开的问题：为长周期和集体性质构造评测器本身；以及——鉴于任何循环都会优化你交给它的那个信号——把 evaluator、任务数据和权限留在可编辑面之外。第二点上已记录的失败见 [§5](#5-评测器与基准)。监督能自动化到什么程度、而不是靠人堆，本身也是开放问题。
 
-**6 · 合并独立演化谱系。** 两条 harness 分支在 merge 前如何对齐 state、依赖和行为？各分支的局部 diff 不能证明组合后的行为，因此 merged state 可能需要重新执行 regression 与 safety evaluation，不能继承原分支的批准。
+**6 · 保存失败与防止塌缩。** 这是同一个问题的两面。已发表文献偏向成功，因此在其上训练的模型不擅长放弃假设、报告负面结果或承认一次运行失败了——而失败恰恰是压缩搜索空间最快的东西，harness 应当让它们能以一等 artifact 的形式廉价保存：拒绝记录、失败的固定种子回放、golden trace、明确写下的死方向。另一面是选择循环会集中到当前得分高的东西上，塌缩成同一个解的变体。这在最优路径按当前评测器看起来更差时最要命，而那正是这类循环被瞄准的开放式研究场景。novelty 与 archive 机制是有的（[FunSearch](https://www.nature.com/articles/s41586-023-06924-6)、[ShinkaEvolve](https://arxiv.org/abs/2509.19349)、MAP-Elites）；缺的是一个定义在 harness 状态上、且真能预测什么的多样性度量。
 
-**7 · Model–harness co-design 与蒸馏。** 经 fresh tasks 确认的 harness 改进能否蒸馏到模型训练或更小的可复用组件中？关键 ablation 是删除或简化补偿性脚手架后，更新模型是否仍保留 fresh-task 收益。缺少这一步，规则持续累积不能证明能力已经内化。
+**7 · 该按什么划分簇？** [II.3](#ii3-对接受门的推论) 说明，集中在质量为 $p_k$ 的任务簇上的退化，在超过 $\eta_T/p_k$ 之前都藏在总体松弛之下，所以非回归必须按簇报告。但"按簇报告"在没有一个站得住的能力划分方式时无法执行，而这样的划分并不存在。在有之前，报告所用的划分及其理由，让读者能判断某个尾部能力是否可能藏在一个大簇里。
+
+**8 · 合并独立演化的谱系。** 两条分支各自通过了自己的 gate，合并后的状态哪个都没通过。可达集计数直接失效，因为合并结果不在任何一条谱系的可达类里，因此 merged state 可能需要重新做回归与安全评测，而不能继承原分支的批准。统计之外还要在 state、依赖和行为上对齐两条分支——各分支的逐轮局部 diff 预测不了它们组合后的行为。这是单谱系协议没有明显推广方式的情形。
+
+**9 · Model–harness co-design，以及使它可检验的那个 ablation。** 值得检验的主张不是"脚手架产生能力"。三个已报告的观察支撑一个循环：较弱模型从 harness 优化中获益更多；不存在跨模型都最优的 harness；agent 能力不只由模型强度决定。循环是：trace 暴露一个反复出现的失败，harness 局部修补它或者 trace 成为训练数据，fresh tasks 确认收益，稳定的经验蒸馏进模型。**检验点是最后一步——模型变强之后，能不能删掉那段补偿性脚手架而 fresh-task 收益仍在？** 没有这个 ablation，规则越堆越多不能证明能力已经内化。长期进展应该表现为脚手架在变薄。
+
+**10 · 人在哪里介入。** 上面几条都需要人的判断，而没有一条说明它从哪里进来。人工评审改变的是写权限，不是统计独立性；把它当作 gate 会混淆治理证据与确认证据——[§4](#4-验证协议候选如何进入持久-state) 正是为此把两者分开。设计问题是：哪些决策点值得让人介入、在什么抽象层级介入，以及循环该如何呈现一个候选，使评审既便宜又有信息量，而不是在一个大 diff 上盖章。
+
+**11 · 按检查的运行代价分配它们。** compile、type-check 和静态分析能在任何 rollout 之前拒掉候选，这使 filter-then-evaluate 成为 gate 的正确形状——但最优划分还没有人刻画过。哪些检查可以贴着执行端跑，哪些需要交给具备 fresh tasks、重复试验和审计能力的独立 evaluator？可用晋级率、验证延迟、rollback 成本和跨版本失败率检验。要避开的陷阱是从部署拓扑推断独立性：把检查放在另一套基础设施上并不使它的数据变新鲜。
 
 ## 配套文档
 
