@@ -107,10 +107,10 @@ ZO analogy 只表示信息或搜索角色，不表示 LLM 编辑器计算了数�
 |---|---|---|---|
 | **L0** | instruction prompt | prompt、指令块、示例 | [APE](https://arxiv.org/abs/2211.01910)、[OPRO](https://arxiv.org/abs/2309.03409)、[ProTeGi](https://arxiv.org/abs/2305.03495)、[GEPA](https://arxiv.org/abs/2507.19457) |
 | **L1** | context、memory、skill | 条目、文件、检索单元、可执行 skill | [Reflexion](https://arxiv.org/abs/2303.11366)、[ExpeL](https://arxiv.org/abs/2308.10144)、[ACE](https://arxiv.org/abs/2510.04618)、[Voyager](https://arxiv.org/abs/2305.16291)、[SkillOpt](https://arxiv.org/abs/2605.23904)、[SkillOpt-Lite](https://arxiv.org/abs/2607.03451) |
-| **L2** | workflow、graph、architecture | 节点、边、子图、模块槽位 | [GPTSwarm](https://arxiv.org/abs/2402.16823)、[ADAS](https://arxiv.org/abs/2408.08435)、[AFlow](https://arxiv.org/abs/2410.10762)、[AgentSquare](https://arxiv.org/abs/2410.06153)、[MaAS](https://arxiv.org/abs/2502.04180) |
-| **L3** | Harness 或 agent code | 文件、模块、工具、插件 | [STOP](https://arxiv.org/abs/2310.02304)、[DGM](https://arxiv.org/abs/2505.22954)、[SICA](https://arxiv.org/abs/2504.15228)、[Self-Harness](https://arxiv.org/abs/2606.09498)、[AHE](https://arxiv.org/abs/2604.25850) |
-| **L4** | optimizer 或 meta-harness code | proposer、selector、搜索算子 | [Meta-Harness](https://arxiv.org/abs/2603.28052)、[MCE](https://arxiv.org/abs/2601.21557) |
-| **L5** | Harness 与模型联合适配 | checkpoint、LoRA、prefix 及 Harness state | [SIA](https://arxiv.org/abs/2605.27276)、[SEAL](https://arxiv.org/abs/2506.10943) |
+| **L2** | workflow、graph、architecture | 节点、边、子图、模块槽位 | [GPTSwarm](https://arxiv.org/abs/2402.16823)、[AFlow](https://arxiv.org/abs/2410.10762)、[AgentSquare](https://arxiv.org/abs/2410.06153)、[MASS](https://arxiv.org/abs/2502.02533)；[ADAS](https://arxiv.org/abs/2408.08435) 为 L3/secondary L2 |
+| **L3** | Harness 或 agent code | 文件、模块、工具、插件 | [ADAS](https://arxiv.org/abs/2408.08435)、[DGM](https://arxiv.org/abs/2505.22954)、[SICA](https://arxiv.org/abs/2504.15228)、[Self-Harness](https://arxiv.org/abs/2606.09498)、[AHE](https://arxiv.org/abs/2604.25850)、[AutoHarness](https://arxiv.org/abs/2603.03329)、[Meta-Harness](https://arxiv.org/abs/2603.28052) |
+| **L4** | optimizer 或 context-management mechanism | proposer、selector、搜索算子 | [STOP](https://arxiv.org/abs/2310.02304)、[MCE](https://arxiv.org/abs/2601.21557) |
+| **L5** | Harness 与模型联合适配 | checkpoint、LoRA、prefix 及 Harness state | [SIA](https://arxiv.org/abs/2605.27276)；[SEAL](https://arxiv.org/abs/2506.10943) 作为纯 weight-update 邻接对照 |
 
 一项工作可以同时出现在多个分析轴上。层级只说明改了什么，后文说明候选如何产生以及哪些证据能够支持持久化。
 
@@ -133,37 +133,45 @@ Y(s,z;\xi)=R\!\left(H_s(M,z;\xi)\right),\qquad
 f_M(s)=\mathbb E_{z,\xi}[Y(s,z;\xi)].
 ~~~
 
-部署后的目标只能通过运行状态观察。proposer 还可以得到更丰富的观测：
+对于文本、程序和文件树，除非先给出显式的连续参数化，否则 \(\nabla_s f_M(s)\) 没有定义。因此，HarnessOpt 将运行过程视为目标接口：关于 \(f_M\) 的信息只能通过部署状态并观察其结果获得。
+
+proposer 还可以得到比标量回报更丰富的观测：
 
 ~~~math
 \mathcal O(s,z;\xi)=\bigl(Y(s,z;\xi),\Psi(s,z;\xi)\bigr),
 ~~~
 
-其中 \(\Psi\) 包括轨迹、错误、工具调用和 verifier feedback。这些信息可以让提议更有针对性，但不提供 \(\nabla_s f_M\)，可读轨迹也不能证明编辑级因果归因。
+其中 \(\Psi\) 包括轨迹、错误、工具调用和 verifier feedback。它改变了 \(P_\phi\) 可用的信息，但不是数值导数、无偏梯度估计器或确认数据。除非状态比较和执行条件受到控制，轨迹本身不能识别某次编辑的因果贡献。
 
-需要固定三条边界：
+需要区分三件事：
 
-- semantic feedback 不等于 gradient estimator；
-- compile、type、schema 或 interface 检查是 feasibility filter，不是性能 oracle；
-- parent 与 child 的成对分数是状态间经验差，不自动构成 central finite difference。
+- semantic feedback 是提议侧信息，不是 gradient estimator；
+- compile、type、schema 和 interface 检查只能建立可执行性，不能证明任务性能；
+- parent 与 child 的成对分数是状态间经验差。只有显式构造出所需的扰动结构时，才能讨论 central finite difference。
 
 ### 3.2 三条搜索轴
 
-| 设计轴 | 机制家族 | HarnessOpt 问题 | 代表工作 |
-|---|---|---|---|
-| **证据构造** | single-state proposal | 一条轨迹、错误或批评能否提示局部编辑？ | Reflexion、Voyager、ProTeGi、TextGrad |
-|  | batch evidence | 哪些失败模式跨任务或 seed 重复出现？ | ExpeL、SkillOpt、SkillOpt-Lite、Trace2Skill、SkillForge |
-|  | paired state comparison | parent 与 edited state 在同一任务批上有何差异？ | SkillCAT、Trace2Skill 的 selective path |
-| **搜索几何** | block-local edit | 哪个声明过的组件、文件、条目或模块可以修改？ | SkillAdaptor、AgentSquare、DemoEvolve、AlphaEvolve |
-|  | bounded local search | 如何在评测前限制描述空间中的编辑范围？ | SkillOpt、SkillOpt-Lite、SkillForge、Self-Harness |
-| **查询分配** | history 或 surrogate | 如何用历史、surrogate 或 bandit 分配 rollout 预算？ | ProTeGi、MIPROv2、AgentSquare、AdaEvolve |
-|  | population 或 archive | 哪些候选或谱系继续保留以供探索？ | GEPA、Promptbreeder、DGM、AlphaEvolve、Meta-Harness |
+三条搜索轴对应提议过程的不同环节。证据构造说明查询哪些运行以及如何聚合观测；搜索几何说明编辑可以在表示空间的哪一部分形成；查询分配说明如何依据历史、surrogate 或保留候选决定下一次评测。三条轴在分析上可分解，在实现中可能相互耦合。
 
-这些机制可以组合，但不能互相替代。batch 不是扰动方向集合；有组件边界不等于各块可以独立评价；archive 提高搜索多样性，不等于独立确认。
+| 设计轴 | 机制家族 | Harness-native 形式 | 与经典 derivative-free 方法的对应关系 | 代表工作 |
+|---|---|---|---|---|
+| **证据构造** | single-state semantic proposal | 读取当前状态的轨迹、错误和反馈，在尚未评估编辑状态的情况下形成候选。 | 共享“通过目标查询获取信息”的接口，不构成数值估计器。 | Reflexion、Voyager、ProTeGi、TextGrad |
+|  | batch evidence aggregation | 在编辑状态固定时，跨任务或 seed 聚合失败模式。 | 对应重复噪声查询或样本平均；任务不是扰动方向。 | SkillOpt、SkillOpt-Lite、Trace2Skill、ExpeL、SkillForge |
+|  | paired state comparison | 在同一任务批上运行 parent 与 edited state，比较任务级回报。 | 对应 two-point comparison；没有可构造的正负扰动时，不构成 central difference。 | SkillCAT、Trace2Skill 的 selective path |
+| **搜索几何** | block-local edit | 将一次提议限制在结果观测前已经声明的组件、文件、条目、模块或图节点内。 | 与 block-coordinate search 具有结构对应，但不假定各 block 可分离。 | SkillAdaptor、AgentSquare、DemoEvolve、AlphaEvolve |
+|  | bounded local search | 在任务评测前，以 token、文件、diff、操作数或 allowlist 限制候选范围。 | 类似 local direct search；没有行为距离和半径更新时，不称为 trust region。 | SkillOpt、SkillOpt-Lite、SkillForge、Self-Harness |
+| **查询分配** | history 或 surrogate allocation | 根据历史分数、response model 或 bandit 规则选择后续候选和 rollout 预算。 | 只有明确的 acquisition 或 allocation 规则才构成严格对应，否则属于启发式对应。 | ProTeGi、MIPROv2、AgentSquare、AdaEvolve |
+|  | population 或 archive search | 保留候选分数、差异或 Pareto 关系，用于选择后续候选或谱系。 | 与 evolutionary search 具有结构对应；保留候选不提供独立确认。 | GEPA、Promptbreeder、DGM、AlphaEvolve、Meta-Harness |
+
+表中的对应关系分为三个层级。interface correspondence 只要求目标信息通过运行获得；structural correspondence 还要求存在预先定义的编辑单元或保留规则；strict correspondence 则要求满足经典算子的数值参数化、更新规则和抽样假设。标签本身不能推出收敛率、方差下降、行为半径或独立确认。
 
 ### 3.3 结构与成本
 
-可编辑面提供搜索算子能够使用的结构。组件边界、allowlist、feature toggle、版本快照和确定性 replay 可以让局部编辑及成对比较真正可实施。它们不意味着代码天然优于文本：代码同时带来更强的耦合、副作用和回归路径。
+可编辑面决定搜索算子能够使用的结构。令 \(\mathcal S_{\mathrm{feas}}\subseteq\mathcal S_{\mathrm{edit}}\) 表示满足 compile、type、interface 和写入路径契约的状态集合。静态检查可以判定候选是否属于这一构造性子集，但不能估计 \(f_M\)，也不能证明语义正确。
+
+组件边界、allowlist、feature toggle、版本快照和确定性 replay 可以使局部编辑及成对比较具备可执行条件。这些结构不意味着代码优于文本。代码提供更强的结构约束，同时引入耦合、副作用和更大的回滚面。syntactic edit budget 只限制描述空间；如果没有额外的行为度量，它不能限制执行行为的变化幅度。
+
+局部搜索只有在评测前已经确定可编辑组件和初始状态时才有明确含义。因此，Round-0 scaffold 属于状态定义，不构成性能改进证据。
 
 Harness 查询的成本不相同，可用下面的分解式记账：
 
@@ -171,7 +179,9 @@ Harness 查询的成本不相同，可用下面的分解式记账：
 C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\mathrm{smoke}}c_{\mathrm{smoke}}+n_{\mathrm{task}}c_{\mathrm{task}}.
 ~~~
 
-静态检查和 smoke test 在完整 rollout 前过滤候选，但不能替代任务级确认。search evidence 和 confirmation evidence 必须分开统计。只有当任务、seed 和环境能够降低噪声，且收益足以抵消额外运行成本时，成对评估才值得使用。
+静态检查和 smoke test 在完整 task rollout 前过滤候选，但不能替代任务级确认。search evidence 和 confirmation evidence 必须分开统计。只有当任务、seed 和环境对齐后产生的协方差下降足以抵消额外执行成本时，成对评估才有统计上的理由；paired 标签本身不能证明这种下降。
+
+由此得到的设计含义取决于运行条件。task rollout 成本较高时，应明确分配 proposer 深度、评测前过滤和候选数量的预算。执行噪声较高且 parent 与 child 可以对齐时，成对评估可能提高比较效率。如果能够直接度量行为变化，bounded search 比 token 数或 diff size 更有解释力。这些都是可检验的设计假设，不是本文核查系统的已证属性。
 
 算子要求和保守标记见 [docs/zo-operator-map.md](docs/zo-operator-map.md)。
 
@@ -179,9 +189,23 @@ C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\
 
 ### 4.1 两个不同的统计问题
 
-**B1，提议稳定性**，关注替换一个提议样本是否会显著改变最终状态。batch evidence、跨任务聚合和有界编辑可能降低这种敏感性。本文核查的系统没有系统测量 replace-one 系数，因此这里只能把它写成设计假设。
+令 \(\mathcal A\) 将提议样本 \(D_n\) 映射为持久状态，令 \(x\) 为独立评测任务，令 \(D_n^{(i\leftarrow x_i')}\) 表示用独立样本替换第 \(i\) 个提议样本。提议稳定性可用 expected replace-one sensitivity 表示：
 
-**B2，固定候选确认**，关注一个在没有使用 \(V_m\) 的情况下被固定的候选，是否在新任务上表现良好。对有界损失 \(\ell\)，Hoeffding 给出：
+~~~math
+\beta_{\mathrm{avg}}
+=
+\mathbb E\!\left[
+\left|
+\ell(\mathcal A(D_n);x)
+-
+\ell(\mathcal A(D_n^{(i\leftarrow x_i')});x)
+\right|
+\right].
+~~~
+
+**B1，提议稳定性**，关注这一敏感性是否足够小。batch evidence、跨任务聚合和有界编辑可能降低单个提议样本对状态的影响。本文核查的系统没有系统测量 \(\beta_{\mathrm{avg}}\)，因此它属于设计假设，不是实证保证。expected on-average stability 本身也不能推出高概率界。
+
+**B2，固定候选确认**，关注一个在没有使用确认样本 \(V_m\) 的情况下被固定的候选，是否在新任务上表现良好。若 \(V_m\sim\mathcal D^m\)，损失取值在 \([0,1]\) 内，且 \(V_m\) 没有参与候选生成、选择或停止决策，则 Hoeffding 不等式给出：
 
 ~~~math
 \epsilon(\widetilde s)
@@ -190,25 +214,33 @@ C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\
 +\sqrt{\frac{\ln(1/\delta)}{2m}}
 ~~~
 
-以至少 \(1-\delta\) 的概率成立，前提是 \(V_m\) 没有参与候选生成、选择或停止决策。反复自适应使用同一集合后，改名为 validation 或 held-out 也不会恢复独立性。
+以至少 \(1-\delta\) 的概率成立。如果一个任务使用多个 seed，seed 是给定任务条件下的重复观测；在完成任务级聚合后，\(m\) 才表示独立任务数。对同一集合进行自适应复用后，改名为 validation 或 held-out 也不会恢复独立性。
 
 B1 与 B2 不能互相替代。提议过程稳定，仍可能在复用的验证集上过拟合；真正独立的确认集可以评估固定候选，但不能证明 proposer 稳定。
 
+确认评测的结果不能回流到候选提议、候选排序或停止决策。否则确认集已经成为搜索集的一部分。用于搜索和确认的任务级 rollout 应分别统计，并计入被拒候选。
+
 ### 4.2 三类状态转移协议
 
-| 协议 | 什么可以阻止持久化？ | 确认证据能支持什么？ | 代表工作 |
-|---|---|---|---|
-| **Write-through** | 没有候选级阻断 | 只能报告后续任务上的经验表现 | Reflexion、Voyager、ExpeL、ACE、ReasoningBank、Trace2Skill 默认路径 |
-| **Search-time selection** | 在提议或搜索数据上排序、选择 | 支持已观察集合上的经验排序；锁定的 final test 可以评估完整流程 | APE、OPRO、GEPA、AFlow、DGM、Meta-Harness、SkillCAT |
-| **Separated confirmation** | 使用未参与提议和选择的数据执行候选级 gate | 在边界条件成立时，支持固定候选的 holdout 推理 | SkillOpt、SkillOpt-Lite、Self-Harness |
+协议由状态转移发生的位置，以及能够影响该转移的数据共同决定。仅报告 final-test 结果，不能据此判定系统存在 promotion gate。
+
+| 协议 | 状态转移语义 | 确认证据 | 能支持的结论 | 代表工作 |
+|---|---|---|---|---|
+| **Write-through** | 候选直接写入 memory、skill、workflow 或 code，没有候选级阻断规则。 | 没有独立确认数据。 | 后续任务只能提供回溯式经验表现。 | Reflexion、Voyager、ExpeL、ACE、ReasoningBank、Trace2Skill 默认路径 |
+| **Search-time selection** | 在 proposal/search 数据上对候选或 archive 成员排序，选中对象成为下一状态。 | 与搜索过程同源。 | 支持已观察集合上的相对排序；锁定的 final test 可以评估完整流程，但不能证明晋级步骤有效。 | APE、OPRO、GEPA、AFlow、DGM、Meta-Harness、SkillCAT |
+| **Separated confirmation** | 先固定候选，再由独立确认评测决定是否替换当前状态。 | 确认数据未参与提议和选择，但仍需检查跨轮复用和评价边界。 | 在假设成立时，支持固定候选层面的 holdout 推理。 | SkillOpt、SkillOpt-Lite、Self-Harness |
 
 在本文核查集合中，三类协议的描述性数量为 **11 / 19 / 3**。统计范围限于 [docs/audit-table.md](docs/audit-table.md) 审计的系统，不代表整个领域的普查。
 
-只用于最终报告、没有参与状态转移的 untouched final test 不是 promotion gate。人工评审、sandbox、审计日志和 rollback 是正交叠加层，决定谁能写入以及失败后如何恢复，不决定分数是否统计独立。门控代码如果没有实际触发，状态转移效果与不存在门控相同。
+分离是协议属性，独立性还具有时间范围。SkillOpt-Lite 通过调整任务分配扩大确认集；Self-Harness 在多个演化轮次中复用固定的 held-in/held-out 划分。后者满足单轮分离，但不能自动提供跨轮 fresh confirmation。被拒候选同样会消耗确认集所包含的信息，即使它最终没有晋级。
+
+只用于最终报告、没有参与状态转移的 untouched final test 不是 promotion gate。人工评审、sandbox、审计日志和 rollback 是正交控制，分别作用于写入权限、运行时保护和失败恢复，不建立统计独立性。门控必须在实现中实际执行；从未触发的 hook 与不存在门控等价。
 
 ### 4.3 B2 之外的三个条件
 
-1. **判据覆盖。** 损失必须覆盖目标能力、重要任务簇、安全和策略维度。总体分数上升时，低概率能力仍可能塌陷。
+若任务分布划分为 \(K\) 个任务簇，可写为 \(\epsilon(s)=\sum_{k=1}^{K}p_k\epsilon_k(s)\)。概率质量为 \(p_k\) 的任务簇发生幅度为 \(\Delta\epsilon_k\) 的退化时，总体风险只变化 \(p_k\Delta\epsilon_k\)。即使该簇的损失显著恶化，变化仍可能小于确认半径 \(\eta\)。因此，任务簇级 non-regression 需要分层采样和分别报告。
+
+1. **判据覆盖。** 损失必须覆盖目标能力、重要任务簇、安全和策略维度。总体分数提高时，低概率能力仍可能退化。
 2. **评价边界。** 任务、评价器、模型路由、日志、权限和受保护路径必须位于可编辑面之外，或由运行时强制保护。
 3. **行为级拒绝。** 拒绝候选时要恢复进程、注册项、缓存、外部资源和持久 memory，不能只恢复文件树。
 

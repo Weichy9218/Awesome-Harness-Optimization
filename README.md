@@ -126,44 +126,52 @@ The same work may appear on more than one axis. The level says what is edited; t
 
 ### 3.1 Objective interface
 
-For a frozen model and task distribution, one run returns
+Fix a base model \(M\), a task distribution \(\mathcal D\), and a bounded return \(R\). For an editable state \(s\), one execution with run randomness or environment seed \(\xi\) returns
 
 ~~~math
 Y(s,z;\xi)=R\!\left(H_s(M,z;\xi)\right),\qquad
 f_M(s)=\mathbb E_{z,\xi}[Y(s,z;\xi)].
 ~~~
 
-The deployed objective is observed by running a state. A proposer may receive a richer observation
+For text, programs, and file trees, \(\nabla_s f_M(s)\) is not defined unless the representation is embedded in an explicit continuous parameterization. HarnessOpt therefore treats execution as an objective interface: information about \(f_M\) is obtained by deploying a state and observing its result.
+
+The proposer may receive a richer observation than a scalar return:
 
 ~~~math
 \mathcal O(s,z;\xi)=\bigl(Y(s,z;\xi),\Psi(s,z;\xi)\bigr),
 ~~~
 
-where \(\Psi\) contains traces, errors, tool calls, and verifier feedback. This side information can make proposals more targeted, but it does not provide \(\nabla_s f_M\), and a readable trace does not establish edit-level causal attribution.
+where \(\Psi\) contains traces, errors, tool calls, and verifier feedback. \(\Psi\) changes the information available to \(P_\phi\), but it is not a numerical derivative, an unbiased gradient estimator, or confirmation evidence. A trace also does not identify the causal contribution of an edit unless the state comparison and execution conditions are controlled.
 
-Keep three boundaries explicit:
+Three distinctions are required:
 
-- semantic feedback is not a gradient estimator;
-- a compile, type, schema, or interface check is a feasibility filter, not a performance oracle;
-- a paired parent/child score is an empirical state difference, not automatically a central finite difference.
+- semantic feedback is proposal-side information, not a gradient estimator;
+- compile, type, schema, and interface checks establish feasibility, not task-level performance;
+- a paired parent/child score is an empirical state difference, not a central finite difference unless the required perturbation structure is explicitly constructed.
 
 ### 3.2 Three search axes
 
-| Design axis | Mechanism family | Harness-native question | Representative work |
-|---|---|---|---|
-| **Evidence construction** | single-state proposal | Can one trace, error, or critique suggest a local edit? | Reflexion, Voyager, ProTeGi, TextGrad |
-|  | batch evidence | Which failure patterns persist across tasks or seeds? | ExpeL, SkillOpt, SkillOpt-Lite, Trace2Skill, SkillForge |
-|  | paired state comparison | What changes when parent and edited state run the same task batch? | SkillCAT, selective Trace2Skill paths |
-| **Search geometry** | block-local edit | Which declared component, file, entry, or module may change? | SkillAdaptor, AgentSquare, DemoEvolve, AlphaEvolve |
-|  | bounded local search | How is syntactic edit scope limited before evaluation? | SkillOpt, SkillOpt-Lite, SkillForge, Self-Harness |
-| **Query allocation** | history or surrogate | How should history, a surrogate, or a bandit allocate rollout budget? | ProTeGi, MIPROv2, AgentSquare, AdaEvolve |
-|  | population or archive | Which candidates or lineages remain available for exploration? | GEPA, Promptbreeder, DGM, AlphaEvolve, Meta-Harness |
+The three axes classify different parts of the proposal process. Evidence construction describes which executions are queried and how their observations are aggregated. Search geometry describes the representation-level region in which an edit may be formed. Query allocation describes how history, surrogates, or retained candidates determine the next evaluations. They are separable analytically but may be coupled in an implementation.
 
-These families are composable. A batch is not a perturbation set; a block boundary does not make blocks independently evaluable; an archive improves search diversity but does not make its scores an independent confirmation set.
+| Design axis | Mechanism family | Harness-native form | Correspondence to derivative-free optimization | Representative work |
+|---|---|---|---|---|
+| **Evidence construction** | single-state semantic proposal | Read traces, errors, and feedback from the current state and form an edit without first scoring that edited state. | Shares the objective-query interface; no numerical estimator is implied. | Reflexion, Voyager, ProTeGi, TextGrad |
+|  | batch evidence aggregation | Aggregate failure patterns across tasks or seeds while holding the edited state fixed. | Repeated noisy queries or sample averaging; tasks are not perturbation directions. | SkillOpt, SkillOpt-Lite, Trace2Skill, ExpeL, SkillForge |
+|  | paired state comparison | Execute the parent and edited states on the same task batch and compare task-level returns. | Two-point comparison; it is not a central difference without constructible positive and negative perturbations. | SkillCAT, selective Trace2Skill paths |
+| **Search geometry** | block-local edit | Restrict one proposal to a component, file, entry, module, or graph node declared before outcome observation. | Structurally corresponds to block-coordinate search; block separability is not assumed. | SkillAdaptor, AgentSquare, DemoEvolve, AlphaEvolve |
+|  | bounded local search | Limit tokens, files, diff size, operations, or an allowlist before task evaluation. | Resembles local direct search; without a behavioral distance and radius update it is not a trust region. | SkillOpt, SkillOpt-Lite, SkillForge, Self-Harness |
+| **Query allocation** | history or surrogate allocation | Use score history, a response model, or a bandit rule to choose the next candidates and rollout budget. | Strict correspondence requires an explicit acquisition or allocation rule; otherwise the relation is heuristic. | ProTeGi, MIPROv2, AgentSquare, AdaEvolve |
+|  | population or archive search | Retain candidate scores, differences, or Pareto relations and use them to select later candidates or lineages. | Structurally resembles evolutionary search; retention does not provide independent confirmation. | GEPA, Promptbreeder, DGM, AlphaEvolve, Meta-Harness |
+
+The table uses three levels of correspondence. An interface correspondence only states that objective information is obtained through execution. A structural correspondence additionally requires a representation-level edit unit or retention rule. A strict correspondence requires the numerical parameterization, update rule, and sampling assumptions of the classical operator. The label alone does not imply a convergence rate, a variance reduction, a behavioral radius, or an independent confirmation set.
 
 ### 3.3 Structure and cost
 
-The editable surface supplies the structure available to a search operator. Component boundaries, allowlists, feature toggles, version snapshots, and deterministic replay can make localized edits and paired comparisons implementable. They do not make code inherently better than text: code also creates more coupling, side effects, and regression paths.
+The editable surface supplies the structure available to a search operator. Let \(\mathcal S_{\mathrm{feas}}\subseteq\mathcal S_{\mathrm{edit}}\) denote states satisfying compile, type, interface, and write-path contracts. A static checker can test membership in this constructive subset, but it does not estimate \(f_M\) or establish semantic correctness.
+
+Component boundaries, allowlists, feature toggles, version snapshots, and deterministic replay can make local edits and paired comparisons executable. They do not imply that code is superior to text. Code supplies stronger structural constraints but also introduces coupling, side effects, and a larger rollback surface. A syntactic edit budget limits description space; it does not, without an additional behavioral metric, limit the change in execution behavior.
+
+Local search is meaningful only when the editable components and the initial state are specified before evaluation. A Round-0 scaffold is therefore part of the state definition, not evidence that the update improved performance.
 
 Harness queries have unequal cost. A useful accounting is
 
@@ -171,7 +179,9 @@ Harness queries have unequal cost. A useful accounting is
 C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\mathrm{smoke}}c_{\mathrm{smoke}}+n_{\mathrm{task}}c_{\mathrm{task}}.
 ~~~
 
-Static checks and smoke tests filter candidates before expensive rollout; they do not replace task-level confirmation. Search evidence and confirmation evidence must be counted separately. Paired evaluation is worthwhile only when task, seed, and environment alignment reduce noise enough to offset the extra run cost.
+Static checks and smoke tests filter candidates before expensive task rollouts; they do not replace task-level confirmation. Search evidence and confirmation evidence must be counted separately. Paired evaluation is justified only when task, seed, and environment alignment produces sufficient covariance reduction to offset the additional execution cost; the paired label alone does not establish that reduction.
+
+The resulting design implications are regime-dependent. When task rollouts are expensive, the budget should be allocated explicitly among proposer depth, pre-evaluation filters, and candidate count. When execution noise is high and parent and child states can be aligned, paired evaluation may improve comparison efficiency. When behavioral change can be measured more directly than token or diff size, bounded search becomes a more informative control. These are testable hypotheses, not established properties of the listed systems.
 
 See [docs/zo-operator-map.md](docs/zo-operator-map.md) for the operator requirements and conservative labels.
 
@@ -179,9 +189,23 @@ See [docs/zo-operator-map.md](docs/zo-operator-map.md) for the operator requirem
 
 ### 4.1 Two different statistical questions
 
-**B1, proposal stability**, asks whether replacing one proposal example can substantially change the learned state. Batch evidence, cross-task aggregation, and bounded edits are mechanisms that may reduce this sensitivity. The checked systems do not systematically measure the replace-one coefficient, so it remains a design hypothesis.
+Let \(\mathcal A\) map a proposal sample \(D_n\) to a persistent state. For a fresh evaluation task \(x\), let \(D_n^{(i\leftarrow x_i')}\) replace one proposal example with an independent draw. Proposal stability is represented by the expected replace-one sensitivity
 
-**B2, fixed-candidate confirmation**, asks whether a candidate fixed without using \(V_m\) performs well on fresh tasks. For bounded loss \(\ell\), Hoeffding gives
+~~~math
+\beta_{\mathrm{avg}}
+=
+\mathbb E\!\left[
+\left|
+\ell(\mathcal A(D_n);x)
+-
+\ell(\mathcal A(D_n^{(i\leftarrow x_i')});x)
+\right|
+\right].
+~~~
+
+**B1, proposal stability**, asks whether this quantity is small. Batch evidence, cross-task aggregation, and bounded edits are mechanisms that may reduce sensitivity to one proposal example. The checked systems do not systematically measure \(\beta_{\mathrm{avg}}\); it is therefore a design hypothesis, not an empirical guarantee. Expected on-average stability alone also does not provide a high-probability bound.
+
+**B2, fixed-candidate confirmation**, asks whether a candidate fixed without using a confirmation sample \(V_m\) performs well on fresh tasks. If \(V_m\sim\mathcal D^m\), the loss is bounded in \([0,1]\), and \(V_m\) does not influence candidate generation, selection, or stopping, Hoeffding's inequality gives
 
 ~~~math
 \epsilon(\widetilde s)
@@ -190,25 +214,33 @@ See [docs/zo-operator-map.md](docs/zo-operator-map.md) for the operator requirem
 +\sqrt{\frac{\ln(1/\delta)}{2m}}
 ~~~
 
-with probability at least \(1-\delta\), provided \(V_m\) did not influence candidate generation, selection, or the stopping decision. Reusing the same set adaptively does not restore independence by renaming it validation or held-out.
+with probability at least \(1-\delta\). If a task is run with multiple seeds, the seeds are repeated observations conditional on that task; \(m\) counts independent tasks after the stated task-level aggregation. Reusing the same set adaptively does not restore independence by renaming it validation or held-out.
 
 B1 and B2 are not substitutes. A stable proposer can overfit a reused validation set; a genuinely fresh confirmation set can evaluate a fixed candidate without proving that the proposer is stable.
 
+Confirmation evaluations must not feed back into proposal generation, candidate ranking, or stopping decisions. Otherwise the confirmation sample becomes part of the search set. Task-level rollouts used for search and confirmation should therefore be counted separately, including rejected candidates.
+
 ### 4.2 Three state-transition protocols
 
-| Protocol | What can block persistence? | What the evidence supports | Representative work |
-|---|---|---|---|
-| **Write-through** | nothing at candidate level | later empirical performance only | Reflexion, Voyager, ExpeL, ACE, ReasoningBank, Trace2Skill default path |
-| **Search-time selection** | ranking or selection on proposal/search data | empirical ordering on the observed set; a locked final test can evaluate the finished procedure | APE, OPRO, GEPA, AFlow, DGM, Meta-Harness, SkillCAT |
-| **Separated confirmation** | a candidate-level gate on data not used by proposal or selection | fixed-candidate holdout reasoning, subject to reuse and boundary assumptions | SkillOpt, SkillOpt-Lite, Self-Harness |
+The protocol is determined by where the state transition occurs and by the data that can affect it. A final-test result does not, by itself, identify a promotion gate.
+
+| Protocol | State-transition semantics | Confirmation evidence | What the evidence supports | Representative work |
+|---|---|---|---|---|
+| **Write-through** | The candidate is written into memory, skill, workflow, or code without a candidate-level blocking rule. | No separate confirmation evidence. | Later tasks provide retrospective empirical evidence only. | Reflexion, Voyager, ExpeL, ACE, ReasoningBank, Trace2Skill default path |
+| **Search-time selection** | Candidates or archive members are ranked on proposal/search data, and the selected object becomes the next state. | Evidence is sourced from the same search process. | Relative ordering on the observed set; a locked final test can evaluate the completed procedure, but not certify the promotion step. | APE, OPRO, GEPA, AFlow, DGM, Meta-Harness, SkillCAT |
+| **Separated confirmation** | A candidate is fixed before a separate confirmation evaluation decides whether it replaces the current state. | Confirmation data are excluded from proposal and selection, subject to reuse and boundary checks. | Fixed-candidate holdout reasoning under the stated assumptions. | SkillOpt, SkillOpt-Lite, Self-Harness |
 
 In the checked set, the descriptive counts are **11 / 19 / 3** for write-through, search-time selection, and separated confirmation. The count is limited to the systems audited in [docs/audit-table.md](docs/audit-table.md); it is not a census of the field.
 
-An untouched final test used only for reporting is not a promotion gate. Human review, sandboxing, audit logs, and rollback are orthogonal overlays: they govern who can write and how failure is recovered, not whether the score is statistically independent. A gate must also be active in the implementation; a dead hook is equivalent to no gate.
+Separation is a protocol property; independence also has a time scope. SkillOpt-Lite changes task allocation to enlarge the confirmation set, while Self-Harness reuses a fixed held-in/held-out split across evolution rounds. The latter supports single-round separation but not automatically fresh confirmation across rounds. A rejected candidate also consumes information about the confirmation set, even when it is not promoted.
+
+An untouched final test used only for reporting is not a promotion gate. Human review, sandboxing, audit logs, and rollback are orthogonal controls. They govern write authority, runtime protection, and recovery; they do not establish statistical independence. A gate must be active in the implementation. A hook that is never executed is equivalent to no gate.
 
 ### 4.3 Three conditions outside B2
 
-1. **Criterion coverage.** The loss must include the target capability, important task clusters, safety, and policy dimensions. An aggregate score can rise while a low-mass capability collapses.
+Write \(\epsilon(s)=\sum_{k=1}^{K}p_k\epsilon_k(s)\) for a distribution partitioned into task clusters. A degradation \(\Delta\epsilon_k\) in a cluster of mass \(p_k\) changes the aggregate risk by only \(p_k\Delta\epsilon_k\). It can remain below a confirmation slack \(\eta\) even when the cluster-level loss is materially worse. Cluster-level non-regression therefore requires stratified sampling and reporting.
+
+1. **Criterion coverage.** The loss must include the target capability, important task clusters, safety, and policy dimensions. An aggregate score can improve while a low-mass capability deteriorates.
 2. **Evaluation boundary.** Tasks, evaluators, model routing, logging, permissions, and protected paths must remain outside the editable surface or be enforced at run time.
 3. **Behavioral rejection.** Rejection must restore processes, registrations, caches, external resources, and persistent memory, not only the file tree.
 

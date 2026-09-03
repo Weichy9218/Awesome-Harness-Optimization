@@ -46,6 +46,8 @@ The repository therefore separates:
 
 Use a classical term literally only when the implementation meets its mathematical requirements. Otherwise use the repository label as a conservative role description.
 
+The correspondence has three levels. An interface correspondence means that objective information is obtained through execution. A structural correspondence additionally requires a representation-level edit unit or retention rule. A strict correspondence requires the numerical parameterization, update rule, and sampling assumptions of the classical operator. None of these labels supplies a convergence rate, a variance-reduction result, a behavioral radius, or an independent confirmation set.
+
 ## 3. Surface structure determines implementability
 
 | Editable surface | Structure available before evaluation | Defensible operation |
