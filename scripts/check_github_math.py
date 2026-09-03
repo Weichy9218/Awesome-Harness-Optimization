@@ -8,7 +8,11 @@ import sys
 from pathlib import Path
 
 
-PROTECTED_INLINE_MATH = re.compile(r"\$`[^`\n]*`\$")
+INLINE_MATH = re.compile(r"(?<!\\)\$(?!\$)([^$\n]+?)(?<!\\)\$(?!\$)")
+INLINE_CODE = re.compile(r"(?<!`)`+(?!`)(.+?)(?<!`)`+(?!`)")
+# GitHub also supports $`...`$, but the repository standardizes on plain
+# $...$ because its current formulas do not need Markdown disambiguation.
+BACKTICK_INLINE_MATH = re.compile(r"\$`[^`\n]*`\$")
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})([A-Za-z0-9_-]*)\s*$")
 
 
@@ -39,14 +43,21 @@ def check_file(path: Path) -> list[str]:
             errors.append(f"{path}:{line_number}: use GitHub math delimiters, not \\(...\\)")
 
         # Math fences may contain arbitrary LaTeX. Outside a fence, remove
-        # valid $`...`$ spans first; any remaining single dollar is a raw
-        # inline delimiter (or an unescaped dollar sign) that needs review.
+        # code spans and valid $...$ spans first; any remaining single dollar
+        # is an unmatched inline delimiter (or an unescaped dollar sign) that
+        # needs review.
         if not in_fence:
-            remaining = PROTECTED_INLINE_MATH.sub("", line).replace("$$", "")
+            if BACKTICK_INLINE_MATH.search(line):
+                errors.append(
+                    f"{path}:{line_number}: backtick-wrapped inline math; use $...$"
+                )
+            remaining = INLINE_CODE.sub("", line)
+            remaining = INLINE_MATH.sub("", remaining).replace("$$", "")
+            remaining = remaining.replace(r"\$", "")
             if "$" not in remaining:
                 continue
             errors.append(
-                f"{path}:{line_number}: unprotected inline math; use $`...`$"
+                f"{path}:{line_number}: unprotected inline math; use $...$"
             )
 
     if in_fence:
