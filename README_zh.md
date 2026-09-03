@@ -16,21 +16,21 @@
 
 1. [收录范围](#1-收录范围)
 2. [动机：为什么需要 HarnessOpt 视角](#2-动机为什么需要-harnessopt-视角)
-3. [§3. HarnessOpt：状态与更新回路](#3-harnessopt状态与更新回路)
+3. [3. HarnessOpt：状态与更新回路](#3-harnessopt状态与更新回路)
    - [3.1 清单字段：三条分析轴](#31-清单字段三条分析轴)
-4. [§4. 可编辑面：L0–L5](#4-可编辑面l0l5)
+4. [4. 可编辑面：L0–L5](#4-可编辑面l0l5)
    - [4.1 代表性条目](#41-代表性条目)
-5. [§5. 候选提议：ZO interface](#5-候选提议zo-interface)
+5. [5. 候选提议：ZO interface](#5-候选提议zo-interface)
    - [5.1 目标接口](#51-目标接口)
    - [5.2 三条搜索轴](#52-三条搜索轴)
    - [5.3 结构与成本](#53-结构与成本)
-6. [§6. 确认与持久化：状态转移协议](#6-确认与持久化状态转移协议)
+6. [6. 确认与持久化：状态转移协议](#6-确认与持久化状态转移协议)
    - [6.1 两个不同的统计问题](#61-两个不同的统计问题)
    - [6.2 三类状态转移协议](#62-三类状态转移协议)
    - [6.3 B2 之外的三个条件](#63-b2-之外的三个条件)
-7. [§7. 评测：报告演化轨迹](#7-评测报告演化轨迹)
+7. [7. 评测：报告演化轨迹](#7-评测报告演化轨迹)
 - S1. [文献地图：围绕主线补齐缺口](#s1-文献地图围绕主线补齐缺口)
-8. [§8. 未来方向：可治理的演化](#8-未来方向可治理的演化)
+8. [8. 未来方向：可治理的演化](#8-未来方向可治理的演化)
    - [8.1 插件生命周期、组合性与可逆状态](#81-插件生命周期组合性与可逆状态)
    - [8.2 端、边、云：按确认成本分配职责](#82-端边云按确认成本分配职责)
    - [8.3 评价器、长期目标、记忆与失败多样性](#83-评价器长期目标记忆与失败多样性)
@@ -75,7 +75,7 @@ L0–L5 表是核心清单。边界阅读和文献地图中的锚点都会明确
 
 **背景文献。** [Good，*Speculations Concerning the First Ultraintelligent Machine*（1966）](https://doi.org/10.1016/S0065-2458%2808%2960418-0) 提出通过自我设计改进机器；[Schmidhuber，*Gödel Machines*（2003）](https://arxiv.org/abs/cs/0309048) 明确了以证明为条件的自我重写；[Yudkowsky，*Recursive Self-Improvement*（2008）](https://www.lesswrong.com/posts/JBadX7rwdcRFzGuju/recursive-self-improvement) 为这一回路命名；[Weng，*Harness Engineering for Self-Improvement*（2026）](https://lilianweng.github.io/posts/2026-07-04-harness/) 将近期自我改进的主要对象定位为模型周围的脚手架；[Code as Agent Harness（2026）](https://arxiv.org/abs/2605.18747) 将 code 组织为可执行、可验证、有状态的基础设施。后两者用于确定范围和架构，不提供独立确认的证据。
 
-## §3. HarnessOpt：状态与更新回路
+## 3. HarnessOpt：状态与更新回路
 
 一次更新包含四个不同对象：可编辑集合 $\mathcal S_{\mathrm{edit}}$、证据收集 $Q$、候选提议器 $P_\phi$ 和状态转移规则 $G$。
 
@@ -106,7 +106,7 @@ flowchart LR
 
 插件化运行时可以实现这条回路。如果组件可以在运行中激活，依赖解析、隔离、原子激活和清理就属于 rollback 审计的一部分。该方向属于工程实现与审计范围，不增加分析轴，也不能证明清单中的系统已经支持安全的 live replacement。
 
-本清单按 survey 的章节分工组织：§3 定义 Harness state 与更新回路；§4 回答可以修改什么；§5 回答候选如何形成；§6 回答候选如何确认并持久化；§7 评估完整的 evolution trajectory；§8 记录治理问题。因此，三个清单字段对应 §4–§6，而不是替代这些章节。
+本清单按 survey 的章节分工组织：第 3 节定义 Harness state 与更新回路；第 4 节回答可以修改什么；第 5 节回答候选如何形成；第 6 节回答候选如何确认并持久化；第 7 节评估完整的 evolution trajectory；第 8 节记录治理问题。因此，三个清单字段对应第 4–6 节，而不是替代这些章节。
 
 ### 3.1 清单字段：三条分析轴
 
@@ -122,7 +122,7 @@ flowchart LR
 
 $G$ 是操作层面的状态转移规则。`PAC-style confirmation` 是对 `separated confirmation` 的条件性统计解释。它要求候选先固定，确认数据独立于提议与选择，损失有界，评价边界受到保护。`write-through` 与 `search-time selection` 仍可包含操作层面的 gate，但其数据关系不满足上述 holdout 前提。人工评审、sandbox 和 rollback 属于治理控制，不提供统计独立性。
 
-## §4. 可编辑面：L0–L5
+## 4. 可编辑面：L0–L5
 
 层级表示对象范围，不表示能力等级。写权限、持久性和约束执行方式需要单独记录。
 
@@ -157,7 +157,7 @@ L3/L4 的边界按实际持久写入对象判断，不按 proposer 的角色判�
 - **元层 context 共演化（L4 + L1）。** [MCE](https://arxiv.org/abs/2601.21557) 演化 context-engineering skill，同时由 base-level agent 优化 context artifact。按 primary-write 规则，skill 是 primary L4，artifact 是 secondary L1；基于 validation 的 best-so-far 选择仍属于 search-time selection，不是独立确认。
 - **边界情形。** [GPTSwarm](https://arxiv.org/abs/2402.16823) 和 [ScoreFlow](https://arxiv.org/abs/2502.04306) 对部分问题使用可微或 RL 式组件。[Continual Harness](https://arxiv.org/abs/2605.09998) 在单次运行内在线调整 prompt、sub-agent、skill 和 memory。这些工作标记了 ZO interface 或跨运行持久化标准不再覆盖完整方法的情况。
 
-## §5. 候选提议：ZO interface
+## 5. 候选提议：ZO interface
 
 这里的 `ZO interface` 只表示角色对应关系：运行结果向 proposer 提供目标信息，不声称存在经典 ZO 估计器或收敛保证。
 
@@ -226,7 +226,7 @@ C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\
 
 算子要求和保守标记见 [docs/zo-operator-map.md](docs/zo-operator-map.md)。
 
-## §6. 确认与持久化：状态转移协议
+## 6. 确认与持久化：状态转移协议
 
 本节把 PAC-style holdout reasoning 作为一种分析视角，而不是门控本身的名称。操作问题是候选在哪里被接受、拒绝或回滚；统计问题是确认数据是否仍独立于提议和选择。
 
@@ -289,7 +289,7 @@ B1 与 B2 不能互相替代。即使提议过程稳定，也可能在复用的�
 
 可达集、复用、成对比较和稳定性的细节见 [docs/pac-stability.md](docs/pac-stability.md)；逐系统字段见 [docs/audit-table.md](docs/audit-table.md)。
 
-## §7. 评测：报告演化轨迹
+## 7. 评测：报告演化轨迹
 
 评测的基本单位是 **evolution trajectory**，不是最终版本的单点分数。每次报告至少要公开以下五组字段：
 
@@ -327,7 +327,7 @@ B1 与 B2 不能互相替代。即使提议过程稳定，也可能在复用的�
 | **确认与轨迹评测** | [SkillOpt](https://arxiv.org/abs/2605.23904)、[SkillOpt-Lite](https://arxiv.org/abs/2607.03451)、[Self-Harness](https://arxiv.org/abs/2606.09498)、[AI Agents That Matter](https://arxiv.org/abs/2407.01502)、[HAL](https://arxiv.org/abs/2510.11977)、[RE-Bench](https://arxiv.org/abs/2411.15114)、[MLE-bench](https://arxiv.org/abs/2410.07095)、[PaperBench](https://arxiv.org/abs/2504.01848) | split 与 reuse、阻断持久化的位置、成本、长期保留、可复现性和 evaluator integrity |
 | **风险与治理** | [Misevolution](https://arxiv.org/abs/2509.26354)、[Defining and Characterizing Reward Hacking](https://arxiv.org/abs/2209.13085)、[Scaling Laws for Reward Model Overoptimization](https://arxiv.org/abs/2210.10760)、[Sycophancy to Subterfuge](https://arxiv.org/abs/2406.10162) | evaluator 操纵、reward hacking、多样性坍缩、权限边界、rollback 和人类授权 |
 
-## §8. 未来方向：可治理的演化
+## 8. 未来方向：可治理的演化
 
 本节把长期演化定义为受约束的状态转移问题，不把规则数量的增加视为能力增长。[Weng 对 Harness Engineering 的总结](https://lilianweng.github.io/posts/2026-07-04-harness/) 将弱评价器、上下文与记忆生命周期、负结果、多样性坍缩、奖励投机、长期成功和人类监督列为主要瓶颈。对 HarnessOpt 而言，这些瓶颈分别落在生命周期、部署边界、评价器、状态记忆和人类授权上。DeepSeek Harness 的公开讨论所概括的 “Model + Harness = Agent” 与 “Everything Is a Plugin”，可以作为插件化运行时的工程案例参考，但不能单独证明任何性能或自我进化结论（见 [q1](https://www.zhihu.com/question/2071331484284220938) 和 [q2](https://www.zhihu.com/question/2072255826778140869)）。
 

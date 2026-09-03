@@ -16,21 +16,21 @@
 
 1. [Scope](#1-scope)
 2. [Motivation: why HarnessOpt needs a separate view](#2-motivation-why-harnessopt-needs-a-separate-view)
-3. [§3. HarnessOpt: state and update loop](#3-harnessopt-state-and-update-loop)
+3. [3. HarnessOpt: state and update loop](#3-harnessopt-state-and-update-loop)
    - [3.1 Catalogue schema: the three axes](#31-catalogue-schema-the-three-axes)
-4. [§4. Editable surface: L0–L5](#4-editable-surface-l0l5)
+4. [4. Editable surface: L0–L5](#4-editable-surface-l0l5)
    - [4.1 Representative entries](#41-representative-entries)
-5. [§5. Candidate proposal: a ZO interface](#5-candidate-proposal-a-zo-interface)
+5. [5. Candidate proposal: a ZO interface](#5-candidate-proposal-a-zo-interface)
    - [5.1 Objective interface](#51-objective-interface)
    - [5.2 Three search axes](#52-three-search-axes)
    - [5.3 Structure and cost](#53-structure-and-cost)
-6. [§6. Confirmation and persistence: transition protocols](#6-confirmation-and-persistence-transition-protocols)
+6. [6. Confirmation and persistence: transition protocols](#6-confirmation-and-persistence-transition-protocols)
    - [6.1 Two different statistical questions](#61-two-different-statistical-questions)
    - [6.2 Three state-transition protocols](#62-three-state-transition-protocols)
    - [6.3 Three conditions outside B2](#63-three-conditions-outside-b2)
-7. [§7. Evaluation: report the trajectory](#7-evaluation-report-the-trajectory)
+7. [7. Evaluation: report the trajectory](#7-evaluation-report-the-trajectory)
 - S1. [Literature map: mainline gaps](#s1-literature-map-mainline-gaps)
-8. [§8. Future direction: governable evolution](#8-future-direction-governable-evolution)
+8. [8. Future direction: governable evolution](#8-future-direction-governable-evolution)
    - [8.1 Plugin lifecycle, composability, and reversible state](#81-plugin-lifecycle-composability-and-reversible-state)
    - [8.2 Endpoint–edge–cloud: allocate work by confirmation cost](#82-endpointedgecloud-allocate-work-by-confirmation-cost)
    - [8.3 Evaluators, long-term objectives, memory, and failure diversity](#83-evaluators-long-term-objectives-memory-and-failure-diversity)
@@ -75,7 +75,7 @@ The gap between the second and third rows is the reason to record proposal and c
 
 **Background.** [Good, *Speculations Concerning the First Ultraintelligent Machine* (1966)](https://doi.org/10.1016/S0065-2458%2808%2960418-0) introduces the self-design idea; [Schmidhuber, *Gödel Machines* (2003)](https://arxiv.org/abs/cs/0309048) makes proof-gated self-rewriting explicit; [Yudkowsky, *Recursive Self-Improvement* (2008)](https://www.lesswrong.com/posts/JBadX7rwdcRFzGuju/recursive-self-improvement) names the loop; [Weng, *Harness Engineering for Self-Improvement* (2026)](https://lilianweng.github.io/posts/2026-07-04-harness/) places the near-term loop in the scaffolding around the model; and [Code as Agent Harness (2026)](https://arxiv.org/abs/2605.18747) organizes code as an executable, verifiable, stateful substrate. The last two are scope and architecture anchors, not evidence of independent confirmation.
 
-## §3. HarnessOpt: state and update loop
+## 3. HarnessOpt: state and update loop
 
 One update has four distinct objects: the editable set $\mathcal S_{\mathrm{edit}}$, evidence collection $Q$, proposer $P_\phi$, and state-transition rule $G$.
 
@@ -106,7 +106,7 @@ flowchart LR
 
 A pluginized runtime is one possible implementation of this loop. If components can be activated live, dependency resolution, isolation, atomic activation, and cleanup become part of the rollback audit. This is an engineering target, not a fourth analysis axis and not evidence that a listed system already provides safe live replacement.
 
-The public catalogue follows the survey's division of labour: §3 defines the harness state and update loop; §4 asks what can be edited; §5 asks how candidates are proposed; §6 asks how candidates are confirmed and persisted; §7 evaluates the complete evolution trajectory; and §8 records governance questions. The three catalogue fields therefore map to §4–§6 rather than replacing those sections.
+The public catalogue follows the survey's division of labour: Section 3 defines the harness state and update loop; Section 4 asks what can be edited; Section 5 asks how candidates are proposed; Section 6 asks how candidates are confirmed and persisted; Section 7 evaluates the complete evolution trajectory; and Section 8 records governance questions. The three catalogue fields therefore map to Sections 4–6 rather than replacing those sections.
 
 ### 3.1 Catalogue schema: the three axes
 
@@ -122,7 +122,7 @@ Use this table as the catalogue schema. It is the minimum record for comparing s
 
 `G` is the operational state-transition rule. `PAC-style confirmation` is a conditional statistical interpretation of `separated confirmation`. It requires a candidate fixed before evaluation, confirmation data independent of proposal and selection, bounded loss, and a protected evaluation boundary. A `write-through` or `search-time selection` rule can be a gate in the operational sense, but it does not satisfy that holdout condition. Human review, sandboxing, and rollback are governance controls, not statistical independence.
 
-## §4. Editable surface: L0–L5
+## 4. Editable surface: L0–L5
 
 The level is an object range, not a capability score. Write authority, persistence, and enforcement must be recorded separately.
 
@@ -157,7 +157,7 @@ For the L3/L4 boundary, classify the primary level by the persistent write targe
 - **Meta-level context co-evolution (L4 + L1).** [MCE](https://arxiv.org/abs/2601.21557) evolves the context-engineering skill while a base-level agent optimizes context artifacts. We classify the skill as primary L4 and the artifact as secondary L1; validation-based best-so-far selection remains search-time selection, not independent confirmation.
 - **Boundary cases.** [GPTSwarm](https://arxiv.org/abs/2402.16823) and [ScoreFlow](https://arxiv.org/abs/2502.04306) use differentiable or RL-style components for part of the problem. [Continual Harness](https://arxiv.org/abs/2605.09998) adapts prompts, sub-agents, skills, and memory online within a run. These works mark where the ZO interface or the cross-run persistence criterion no longer describes the full method.
 
-## §5. Candidate proposal: a ZO interface
+## 5. Candidate proposal: a ZO interface
 
 Here `ZO interface` names a role-level correspondence: execution supplies objective information to the proposer. It does not claim a classical ZO estimator or a convergence guarantee.
 
@@ -226,7 +226,7 @@ The resulting design implications are regime-dependent. When task rollouts are e
 
 See [docs/zo-operator-map.md](docs/zo-operator-map.md) for the operator requirements and conservative labels.
 
-## §6. Confirmation and persistence: transition protocols
+## 6. Confirmation and persistence: transition protocols
 
 This section uses PAC-style holdout reasoning as an analysis lens for one protocol, not as the name of the gate itself. The operational question is where the candidate can be accepted, rejected, or rolled back; the statistical question is whether the confirmation data remain independent of proposal and selection.
 
@@ -289,7 +289,7 @@ Write $\epsilon(s)=\sum_{k=1}^{K}p_k\epsilon_k(s)$ for a distribution partitione
 
 See [docs/pac-stability.md](docs/pac-stability.md) for the reachable-class, reuse, paired-comparison, and stability details, and [docs/audit-table.md](docs/audit-table.md) for per-system fields.
 
-## §7. Evaluation: report the trajectory
+## 7. Evaluation: report the trajectory
 
 The correct unit of evaluation is an **evolution trajectory**, not only the final version score. A trajectory report should make five groups of fields visible:
 
@@ -327,7 +327,7 @@ The catalogue is anchored to four literature gaps that follow the update loop. T
 | **Confirmation and trajectory evaluation** | [SkillOpt](https://arxiv.org/abs/2605.23904), [SkillOpt-Lite](https://arxiv.org/abs/2607.03451), [Self-Harness](https://arxiv.org/abs/2606.09498), [AI Agents That Matter](https://arxiv.org/abs/2407.01502), [HAL](https://arxiv.org/abs/2510.11977), [RE-Bench](https://arxiv.org/abs/2411.15114), [MLE-bench](https://arxiv.org/abs/2410.07095), [PaperBench](https://arxiv.org/abs/2504.01848) | split and reuse, blocking point, cost, long-horizon retention, reproducibility, and evaluator integrity |
 | **Risk and governance** | [Misevolution](https://arxiv.org/abs/2509.26354), [Defining and Characterizing Reward Hacking](https://arxiv.org/abs/2209.13085), [Scaling Laws for Reward Model Overoptimization](https://arxiv.org/abs/2210.10760), [Sycophancy to Subterfuge](https://arxiv.org/abs/2406.10162) | evaluator manipulation, reward hacking, diversity collapse, permission boundaries, rollback, and human authorization |
 
-## §8. Future direction: governable evolution
+## 8. Future direction: governable evolution
 
 This section treats long-term evolution as a constrained state-transition problem. An increase in rule count is not evidence of increased capability. [Weng’s summary of harness-engineering challenges](https://lilianweng.github.io/posts/2026-07-04-harness/) identifies weak evaluators, context and memory lifecycle, negative results, diversity collapse, reward hacking, long-term success, and the role of humans. For HarnessOpt, these challenges become requirements on lifecycle, deployment boundaries, evaluators, state management, and authorization. The public discussions of DeepSeek Harness describe “Model + Harness = Agent” and “Everything Is a Plugin”; they are useful engineering cases for a pluginized runtime, but do not by themselves establish performance or self-improvement claims (see [q1](https://www.zhihu.com/question/2071331484284220938) and [q2](https://www.zhihu.com/question/2072255826778140869)).
 
