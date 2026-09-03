@@ -153,17 +153,19 @@ proposer 还可以得到比标量回报更丰富的观测：
 
 三条搜索轴对应提议过程的不同环节。证据构造说明查询哪些运行以及如何聚合观测；搜索几何说明编辑可以在表示空间的哪一部分形成；查询分配说明如何依据历史、surrogate 或保留候选决定下一次评测。三条轴在分析上可分解，在实现中可能相互耦合。
 
-| 设计轴 | 机制家族 | Harness-native 形式 | 与经典 derivative-free 方法的对应关系 | 代表工作 |
-|---|---|---|---|---|
-| **证据构造** | single-state semantic proposal | 读取当前状态的轨迹、错误和反馈，在尚未评估编辑状态的情况下形成候选。 | 共享“通过目标查询获取信息”的接口，不构成数值估计器。 | Reflexion、Voyager、ProTeGi、TextGrad |
-|  | batch evidence aggregation | 在编辑状态固定时，跨任务或 seed 聚合失败模式。 | 对应重复噪声查询或样本平均；任务不是扰动方向。 | SkillOpt、SkillOpt-Lite、Trace2Skill、ExpeL、SkillForge |
-|  | paired state comparison | 在同一任务批上运行 parent 与 edited state，比较任务级回报。 | 对应 two-point comparison；没有可构造的正负扰动时，不构成 central difference。 | SkillCAT、Trace2Skill 的 selective path |
-| **搜索几何** | block-local edit | 将一次提议限制在结果观测前已经声明的组件、文件、条目、模块或图节点内。 | 与 block-coordinate search 具有结构对应，但不假定各 block 可分离。 | SkillAdaptor、AgentSquare、DemoEvolve、AlphaEvolve |
-|  | bounded local search | 在任务评测前，以 token、文件、diff、操作数或 allowlist 限制候选范围。 | 类似 local direct search；没有行为距离和半径更新时，不称为 trust region。 | SkillOpt、SkillOpt-Lite、SkillForge、Self-Harness |
-| **查询分配** | history 或 surrogate allocation | 根据历史分数、response model 或 bandit 规则选择后续候选和 rollout 预算。 | 只有明确的 acquisition 或 allocation 规则才构成严格对应，否则属于启发式对应。 | ProTeGi、MIPROv2、AgentSquare、AdaEvolve |
-|  | population 或 archive search | 保留候选分数、差异或 Pareto 关系，用于选择后续候选或谱系。 | 与 evolutionary search 具有结构对应；保留候选不提供独立确认。 | GEPA、Promptbreeder、DGM、AlphaEvolve、Meta-Harness |
+为使对应关系可以核查，令 \(\mathcal O_i(s)=\mathcal O(s,z_i;\xi_i)\)、\(Y_i(s)=Y(s,z_i;\xi_i)\) 和 \(\Psi_i(s)=\Psi(s,z_i;\xi_i)\)，并令 \(\widehat f_D(s)=m^{-1}\sum_{i=1}^{m}Y_i(s)\)。\(s\oplus\delta\) 表示对状态 \(s\) 应用合法编辑 \(\delta\)，\(\mathcal H_t\) 表示第 \(t\) 轮以前的状态、观测和分数历史，\(b\) 表示在结果观测前已经声明的组件块；若系统提供行为描述子，记为 \(d_{\mathrm{beh}}(s,s')\)，候选谱系标识记为 \(\lambda(s)\)。经典 ZO 公式中的 \(u\) 是随机数值方向，\(d_x\) 是连续参数维度；Harness-native 状态通常没有这两个对象。
 
-表中的对应关系分为三个层级。interface correspondence 只要求目标信息通过运行获得；structural correspondence 还要求存在预先定义的编辑单元或保留规则；strict correspondence 则要求满足经典算子的数值参数化、更新规则和抽样假设。标签本身不能推出收敛率、方差下降、行为半径或独立确认。
+| 设计轴 | 机制家族 | Harness-native 形式（形式化） | 与经典 derivative-free 方法的对应关系（形式化） | 代表工作 |
+|---|---|---|---|---|
+| **证据构造** | single-state semantic proposal | \(\delta_t=P_\phi(s_t,\{\mathcal O_i(s_t)\}_{i=1}^{m})\)，候选为 \(s_t\oplus\delta_t\)，提议前不查询编辑状态。 | 只有目标接口对应。经典 one-point ZO 需要 \(\widehat g_{1p}=(d_x/\mu)Y(x+\mu u)u\)（或带基线修正的变体）；本类方法没有数值方向 \(u\) 和步长 \(\mu\)，不构成该估计器。 | Reflexion、Voyager、ProTeGi、TextGrad |
+|  | batch evidence aggregation | \(\overline{\Psi}_D(s)=\operatorname{Agg}(\{\Psi_i(s)\}_{i=1}^{m})\)，并以 \(\widehat f_D(s)\) 聚合回报。 | 对应同一点上的重复噪声查询：\(\widehat f_m(s)=m^{-1}\sum_i y_i(s)\)，在独立同分布假设下 \(\operatorname{Var}[\widehat f_m(s)]=\sigma^2/m\)；任务不是扰动方向。 | SkillOpt、SkillOpt-Lite、Trace2Skill、ExpeL、SkillForge |
+|  | paired state comparison | \(\widehat\Delta_D(s,\delta)=m^{-1}\sum_i[Y(s\oplus\delta,z_i;\xi_i^+)-Y(s,z_i;\xi_i^-)]\)。 | 对应 two-point ZO \(\widehat g_{2p}=(d_x/(2\mu))[f(x+\mu u)-f(x-\mu u)]u\) 的比较骨架；没有连续参数化和可构造的正负扰动时，不是 central difference。 | SkillCAT、Trace2Skill 的 selective path |
+| **搜索几何** | block-local edit | \(s'=s^{(b\leftarrow\delta_b)}\)，其中块 \(b\) 在结果观测前固定。 | 对应 block-coordinate 更新 \(x'=x+U_b d_b\)；需要预定义坐标，且不假定块间可分离。 | SkillAdaptor、AgentSquare、DemoEvolve、AlphaEvolve |
+|  | bounded local search | \(s'\in\mathcal N_L(s)\cap\mathcal S_{\mathrm{feas}}\)，例如 \(\mathcal N_L(s)=\{s':d_{\mathrm{syn}}(s,s')\le L\}\)。 | 与局部直接搜索或 trust-region 约束 \(\|d\|\le\Delta_k\) 具有形式相似性；若 \(d_{\mathrm{syn}}\) 不是行为距离且没有半径更新规则，只能称 bounded edit。 | SkillOpt、SkillOpt-Lite、SkillForge、Self-Harness |
+| **查询分配** | history 或 surrogate allocation | \(a_{t+1}\in\arg\max_{a\in\mathcal A}\alpha_t(a\mid\mathcal H_t)\)，其中 \(a\) 可表示候选、任务或 rollout 预算。 | 对应 acquisition 选择 \(x_{t+1}\in\arg\max_x\alpha_t(x\mid\mathcal H_t)\) 或显式 bandit allocation；缺少 \(\alpha_t\) 时只是历史启发式。 | ProTeGi、MIPROv2、AgentSquare、AdaEvolve |
+|  | population 或 archive search | \(A_{t+1}=\operatorname{Select}_K(A_t\cup\operatorname{Offspring}(A_t))\)，选择可依赖 \((\widehat f,d_{\mathrm{beh}},\lambda)\)。 | 对应 evolutionary update \(P_{t+1}=\operatorname{Select}(P_t\cup\operatorname{Mutate}(P_t))\) 或 Pareto archive；保留候选不等于收敛，也不提供独立确认。 | GEPA、Promptbreeder、DGM、AlphaEvolve、Meta-Harness |
+
+表中的公式是角色级形式化，不把离散编辑空间连续化。interface correspondence 只要求目标信息通过运行获得；structural correspondence 还要求存在预先定义的编辑单元、邻域或保留规则；strict correspondence 则要求满足经典算子的数值参数化、更新规则、距离结构和抽样假设。只有在这些条件同时成立时，才可以使用 central difference、trust region、bandit allocation 等经典术语。任何一个标签都不能单独推出收敛率、方差下降、行为半径或独立确认。
 
 ### 3.3 结构与成本
 
