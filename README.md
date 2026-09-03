@@ -5,7 +5,7 @@
 **A reading list for Harness Optimization (HarnessOpt): how run-time evidence changes the software around a frozen language model, and how a candidate becomes persistent state.**
 
 [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **English** | [中文](README_zh.md)
@@ -25,7 +25,6 @@
 - [Literature map: mainline gaps](#literature-map-mainline-gaps)
 - [§8. Future direction: governable evolution](#8-future-direction-governable-evolution)
 - [Companion documents](#companion-documents)
-- [Contributing](#contributing)
 - [Citation](#citation)
 
 ## Scope
@@ -180,12 +179,12 @@ To make the correspondence checkable, let $\mathcal O_i(s)=\mathcal O(s,z_i;\xi_
 | Design axis | Mechanism family | Harness-native form (formal) | Correspondence to derivative-free optimization (formal) | Correspondence strength | Representative work |
 |---|---|---|---|---|---|
 | **Evidence construction** | single-state semantic proposal | $\delta_t=P_\phi(s_t,\{\mathcal O_i(s_t)\}_{i=1}^{m})$, with candidate $s_t\oplus\delta_t$; the edited state is not queried before proposal. | Interface correspondence only. Classical one-point ZO requires $\widehat g_{1p}=(d_x/\mu)Y(x+\mu u)u$ (or a baseline-corrected variant); this family has no numerical direction $u$ or step $\mu$, so it is not that estimator. | Interface | Reflexion, Voyager, ProTeGi, TextGrad |
-|  | batch evidence aggregation | $\overline{\Psi}_D(s)=\mathrm{Agg}(\{\Psi_i(s)\}_{i=1}^{m})$, with returns aggregated by $\widehat f_D(s)$. | Repeated noisy queries at one state: $\widehat f_m(s)=m^{-1}\sum_i y_i(s)$, with $\mathrm{Var}[\widehat f_m(s)]=\sigma^2/m$ under an i.i.d. assumption; tasks are not perturbation directions. | Interface | SkillOpt, SkillOpt-Lite, Trace2Skill, ExpeL, SkillForge |
+|  | batch evidence aggregation | $\overline{\Psi} _D(s)=\mathrm{Agg}(\{\Psi _i(s)\} _{i=1}^{m})$, with returns aggregated by $\widehat f _D(s)$. | Repeated noisy queries at one state: $\widehat f _m(s)=m^{-1}\sum_i y_i(s)$, with $\mathrm{Var}[\widehat f _m(s)]=\sigma^2/m$ under an i.i.d. assumption; tasks are not perturbation directions. | Interface | SkillOpt, SkillOpt-Lite, Trace2Skill, ExpeL, SkillForge |
 |  | paired state comparison | $\widehat\Delta_D(s,\delta)=m^{-1}\sum_i[Y(s\oplus\delta,z_i;\xi_i^+)-Y(s,z_i;\xi_i^-)]$. | The comparison skeleton of the two-point ZO estimator $\widehat g_{2p}=(d_x/(2\mu))[f(x+\mu u)-f(x-\mu u)]u$; without a continuous parameterization and constructible positive/negative perturbations, it is not a central difference. | Structural | SkillCAT, selective Trace2Skill paths |
 | **Search geometry** | block-local edit | $s'=s^{(b\leftarrow\delta_b)}$, where block $b$ is fixed before outcome observation. | Structurally corresponds to a block-coordinate update $x'=x+U_b d_b$; coordinates must be predefined and block separability is not assumed. | Structural | SkillAdaptor, AgentSquare, DemoEvolve, AlphaEvolve |
 |  | bounded local search | $s'\in\mathcal N_L(s)\cap\mathcal S_{\mathrm{feas}}$, for example $\mathcal N_L(s)=\{s':d_{\mathrm{syn}}(s,s')\le L\}$. | Resembles local direct search or a trust-region constraint $d^\top d\le\Delta_k^2$; if $d_{\mathrm{syn}}$ is not behavioral and no radius is updated, the correct label is bounded edit. | Structural | SkillOpt, SkillOpt-Lite, SkillForge, Self-Harness |
 | **Query allocation** | history or surrogate allocation | $a_{t+1}\in\arg\max_{a\in\mathcal A}\alpha_t(a\mid\mathcal H_t)$, where $a$ may denote a candidate, task, or rollout budget. | Corresponds to acquisition $x_{t+1}\in\arg\max_x\alpha_t(x\mid\mathcal H_t)$ or an explicit bandit allocation; without $\alpha_t$, it is only a history heuristic. | Strict* | ProTeGi, MIPROv2, AgentSquare, AdaEvolve |
-|  | population or archive search | $A_{t+1}=\mathrm{Select}_K(A_t\cup\mathrm{Offspring}(A_t))$, with selection based on $(\widehat f,d_{\mathrm{beh}},\lambda)$ when available. | Corresponds to an evolutionary update $P_{t+1}=\mathrm{Select}(P_t\cup\mathrm{Mutate}(P_t))$ or a Pareto archive; retention does not imply convergence or independent confirmation. | Structural | GEPA, Promptbreeder, DGM, AlphaEvolve, ShinkaEvolve, ThetaEvolve, MCE, Meta-Harness |
+|  | population or archive search | $A _{t+1}=\mathrm{Select} _K(A _t\cup\mathrm{Offspring}(A _t))$, with selection based on $(\widehat f,d _{\mathrm{beh}},\lambda)$ when available. | Corresponds to an evolutionary update $P _{t+1}=\mathrm{Select}(P _t\cup\mathrm{Mutate}(P _t))$ or a Pareto archive; retention does not imply convergence or independent confirmation. | Structural | GEPA, Promptbreeder, DGM, AlphaEvolve, ShinkaEvolve, ThetaEvolve, MCE, Meta-Harness |
 
 `*Strict` is conditional: it applies only when an explicit acquisition or bandit rule and its sampling assumptions are reported. Otherwise classify the method instance as structural or heuristic.
 
@@ -378,22 +377,6 @@ The main unresolved questions are four connected ones:
 | [docs/audit-table.md](docs/audit-table.md) | Per-system confirmation, evaluator-protection, and rollback fields |
 | [docs/literature-map.md](docs/literature-map.md) | Mainline literature gaps and the source fields to audit next |
 | [docs/glossary.md](docs/glossary.md) | Symbols and protocol terminology |
-
-## Contributing
-
-When adding a paper, keep three kinds of statements separate:
-
-- **Reported fact:** the mechanism, setting, or result stated by the primary source.
-- **Catalogue interpretation:** the L0–L5 level, proposal labels, and confirmation-protocol labels used here.
-- **Recommendation:** a field that an experiment should report.
-
-Use the entry form:
-
-~~~text
-- **Name** — "Title". Authors. *Venue* Year. [[paper]](link) — one line about the harness update. `[Proposal: evidence + structure]` `[Confirmation: protocol; data: relationship; reuse: scope]`
-~~~
-
-For held-out or fresh test, state the split, reuse count, and whether its result could block persistence. If the primary source does not establish a field, write `unverified`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citation
 
