@@ -14,20 +14,36 @@
 
 ## 目录
 
-- [收录范围](#收录范围)
-- [动机：为什么需要 HarnessOpt 视角](#动机为什么需要-harnessopt-视角)
-- [§3. HarnessOpt：状态与更新回路](#3-harnessopt状态与更新回路)
-- [清单字段：三条分析轴](#清单字段三条分析轴)
-- [§4. 可编辑面：L0–L5](#4-可编辑面l0l5)
-- [§5. 候选提议：ZO interface](#5-候选提议zo-interface)
-- [§6. 确认与持久化：状态转移协议](#6-确认与持久化状态转移协议)
-- [§7. 评测：报告演化轨迹](#7-评测报告演化轨迹)
-- [文献地图：围绕主线补齐缺口](#文献地图围绕主线补齐缺口)
-- [§8. 未来方向：可治理的演化](#8-未来方向可治理的演化)
+1. [收录范围](#1-收录范围)
+2. [动机：为什么需要 HarnessOpt 视角](#2-动机为什么需要-harnessopt-视角)
+3. [§3. HarnessOpt：状态与更新回路](#3-harnessopt状态与更新回路)
+   - [3.1 清单字段：三条分析轴](#31-清单字段三条分析轴)
+4. [§4. 可编辑面：L0–L5](#4-可编辑面l0l5)
+   - [4.1 代表性条目](#41-代表性条目)
+5. [§5. 候选提议：ZO interface](#5-候选提议zo-interface)
+   - [5.1 目标接口](#51-目标接口)
+   - [5.2 三条搜索轴](#52-三条搜索轴)
+   - [5.3 结构与成本](#53-结构与成本)
+6. [§6. 确认与持久化：状态转移协议](#6-确认与持久化状态转移协议)
+   - [6.1 两个不同的统计问题](#61-两个不同的统计问题)
+   - [6.2 三类状态转移协议](#62-三类状态转移协议)
+   - [6.3 B2 之外的三个条件](#63-b2-之外的三个条件)
+7. [§7. 评测：报告演化轨迹](#7-评测报告演化轨迹)
+- S1. [文献地图：围绕主线补齐缺口](#s1-文献地图围绕主线补齐缺口)
+8. [§8. 未来方向：可治理的演化](#8-未来方向可治理的演化)
+   - [8.1 插件生命周期、组合性与可逆状态](#81-插件生命周期组合性与可逆状态)
+   - [8.2 端、边、云：按确认成本分配职责](#82-端边云按确认成本分配职责)
+   - [8.3 评价器、长期目标、记忆与失败多样性](#83-评价器长期目标记忆与失败多样性)
+   - [8.4 Model–harness co-design 与人类授权](#84-modelharness-co-design-与人类授权)
+   - [8.5 开放问题](#85-开放问题)
+
+### 文档区
+
 - [配套文档](#配套文档)
 - [引用](#引用)
+- [License](#license)
 
-## 收录范围
+## 1. 收录范围
 
 固定基座模型 $M$、任务分布 $\mathcal D$ 和外部评价边界。设 $s$ 为本轮更新允许持久化的模型外部版本化状态。**Harness** 是连接 $M$ 与任务的可执行系统：它可以加载 instruction 和 context，路由 memory 与 skill，调度 workflow，调用 tool，执行权限控制，并运行 verification 或 replay hook。记 $H_s$ 为状态 $s$ 与固定运行边界共同决定的执行程序，任务 $z$ 的轨迹为 $\tau=H_s(M,z)$。
 
@@ -45,7 +61,7 @@ L0–L5 表是核心清单。边界阅读和文献地图中的锚点都会明确
 
 文献覆盖按更新回路组织，不按发表时间排列。当前清单是围绕主线的代表性集合，不是全领域普查；新增工作应当补充可编辑面、提议机制、确认协议或轨迹评测中的一个问题，并回到一手来源核查这些字段。
 
-## 动机：为什么需要 HarnessOpt 视角
+## 2. 动机：为什么需要 HarnessOpt 视角
 
 早期自我改进工作讨论系统能否设计更好的继任者。HarnessOpt 关注固定模型周围可部署、可版本化的软件状态。需要区分三种证据强度：
 
@@ -92,7 +108,7 @@ flowchart LR
 
 本清单按 survey 的章节分工组织：§3 定义 Harness state 与更新回路；§4 回答可以修改什么；§5 回答候选如何形成；§6 回答候选如何确认并持久化；§7 评估完整的 evolution trajectory；§8 记录治理问题。因此，三个清单字段对应 §4–§6，而不是替代这些章节。
 
-## 清单字段：三条分析轴
+### 3.1 清单字段：三条分析轴
 
 清单记录三个互补字段。它们对应同一更新回路的不同环节，不能互相替代。
 
@@ -131,7 +147,7 @@ $G$ 是操作层面的状态转移规则。`PAC-style confirmation` 是对 `sepa
 
 L3/L4 的边界按实际持久写入对象判断，不按 proposer 的角色判断。搜索 Harness 或 agent code 的系统归入 L3；持久修改 improver、optimizer 或 context-management mechanism 的系统归入 L4。如果两者同时更新，应指定一个 primary target，把另一个记录为 secondary level，并给出支持该判断的原文位置。
 
-### 代表性条目
+### 4.1 代表性条目
 
 - **Prompt 优化（L0）。** [MIPROv2](https://arxiv.org/abs/2406.11695) 用 Bayesian optimization 联合提出 instruction 和 demonstration。[TextGrad](https://arxiv.org/abs/2406.07496) 在复合系统中传播文本批评信号。两者都说明 textual gradient 可以描述提议过程，但不能当作数值导数。`[Proposal: surrogate-model search + trace-informed]` `[Confirmation: search-time selection; data: search-set]`。
 - **Memory 与 skill 演化（L1）。** [ReasoningBank](https://arxiv.org/abs/2509.25140) 从成功和失败中提炼可复用策略。[Trace2Skill](https://arxiv.org/abs/2603.25158) 将轨迹中的局部经验合并为 patch。批量聚合可以扩大证据覆盖，但不会自动产生独立确认。`[Proposal: batch evidence + localized edit]` `[Confirmation: write-through or search-time selection, depending on the path]`。
@@ -300,7 +316,7 @@ B1 与 B2 不能互相替代。即使提议过程稳定，也可能在复用的�
 
 [SWE-bench](https://arxiv.org/abs/2310.06770)、[Terminal-Bench](https://openreview.net/forum?id=a7Qa4CcHak)、[PaperBench](https://arxiv.org/abs/2504.01848) 和长跨度 memory benchmark 可以提供任务。[AI Agents That Matter](https://arxiv.org/abs/2407.01502) 与 [HAL](https://arxiv.org/abs/2510.11977) 提供成本和评价器完整性的规范化视角，[RE-Bench](https://arxiv.org/abs/2411.15114) 与 [MLE-bench](https://arxiv.org/abs/2410.07095) 提供长程任务基座，但都不会自动提供完整协议。按 episode 重置 state 的 benchmark 无法测量持久状态；可见 smoke test 可能只是 proxy；不同 model、harness、optimizer 和 evaluator 的分数也不能直接相加。
 
-## 文献地图：围绕主线补齐缺口
+## S1. 文献地图：围绕主线补齐缺口
 
 清单按更新回路的四个缺口组织文献。下面的链接是覆盖锚点，不表示每个协议字段都已逐篇核查；具体核查队列见[文献地图](docs/literature-map.md)，已完成的协议归类见[审计表](docs/audit-table.md)。
 

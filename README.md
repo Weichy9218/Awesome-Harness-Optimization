@@ -14,20 +14,36 @@
 
 ## Contents
 
-- [Scope](#scope)
-- [Motivation: why HarnessOpt needs a separate view](#motivation-why-harnessopt-needs-a-separate-view)
-- [§3. HarnessOpt: state and update loop](#3-harnessopt-state-and-update-loop)
-- [Catalogue schema: the three axes](#catalogue-schema-the-three-axes)
-- [§4. Editable surface: L0–L5](#4-editable-surface-l0l5)
-- [§5. Candidate proposal: a ZO interface](#5-candidate-proposal-a-zo-interface)
-- [§6. Confirmation and persistence: transition protocols](#6-confirmation-and-persistence-transition-protocols)
-- [§7. Evaluation: report the trajectory](#7-evaluation-report-the-trajectory)
-- [Literature map: mainline gaps](#literature-map-mainline-gaps)
-- [§8. Future direction: governable evolution](#8-future-direction-governable-evolution)
+1. [Scope](#1-scope)
+2. [Motivation: why HarnessOpt needs a separate view](#2-motivation-why-harnessopt-needs-a-separate-view)
+3. [§3. HarnessOpt: state and update loop](#3-harnessopt-state-and-update-loop)
+   - [3.1 Catalogue schema: the three axes](#31-catalogue-schema-the-three-axes)
+4. [§4. Editable surface: L0–L5](#4-editable-surface-l0l5)
+   - [4.1 Representative entries](#41-representative-entries)
+5. [§5. Candidate proposal: a ZO interface](#5-candidate-proposal-a-zo-interface)
+   - [5.1 Objective interface](#51-objective-interface)
+   - [5.2 Three search axes](#52-three-search-axes)
+   - [5.3 Structure and cost](#53-structure-and-cost)
+6. [§6. Confirmation and persistence: transition protocols](#6-confirmation-and-persistence-transition-protocols)
+   - [6.1 Two different statistical questions](#61-two-different-statistical-questions)
+   - [6.2 Three state-transition protocols](#62-three-state-transition-protocols)
+   - [6.3 Three conditions outside B2](#63-three-conditions-outside-b2)
+7. [§7. Evaluation: report the trajectory](#7-evaluation-report-the-trajectory)
+- S1. [Literature map: mainline gaps](#s1-literature-map-mainline-gaps)
+8. [§8. Future direction: governable evolution](#8-future-direction-governable-evolution)
+   - [8.1 Plugin lifecycle, composability, and reversible state](#81-plugin-lifecycle-composability-and-reversible-state)
+   - [8.2 Endpoint–edge–cloud: allocate work by confirmation cost](#82-endpointedgecloud-allocate-work-by-confirmation-cost)
+   - [8.3 Evaluators, long-term objectives, memory, and failure diversity](#83-evaluators-long-term-objectives-memory-and-failure-diversity)
+   - [8.4 Model–harness co-design and human authorization](#84-modelharness-co-design-and-human-authorization)
+   - [8.5 Open questions](#85-open-questions)
+
+### Document sections
+
 - [Companion documents](#companion-documents)
 - [Citation](#citation)
+- [License](#license)
 
-## Scope
+## 1. Scope
 
 Fix a base model $M$, a task distribution $\mathcal D$, and an external evaluation boundary. Let $s$ be the versioned, model-external state that the update is allowed to persist. A **harness** is the executable system that mediates between $M$ and a task: it may load instructions and context, route memory and skills, schedule workflow steps, call tools, enforce permissions, and run verification or replay hooks. We write $H_s$ for that execution under state $s$ and the fixed runtime boundary, so a task $z$ produces $\tau=H_s(M,z)$.
 
@@ -45,7 +61,7 @@ The list includes prompt optimization, self-evolving memory and skills, workflow
 
 Coverage follows the update loop rather than publication chronology. This is a representative, mainline-oriented catalogue, not a field-wide census; additions should clarify an editable surface, proposal mechanism, confirmation protocol, or trajectory-evaluation issue and be checked against the primary source.
 
-## Motivation: why HarnessOpt needs a separate view
+## 2. Motivation: why HarnessOpt needs a separate view
 
 The older self-improvement literature asks whether a system can design a better successor. HarnessOpt studies the deployable software state around a fixed model. The important distinction is the strength of the conclusion:
 
@@ -92,7 +108,7 @@ A pluginized runtime is one possible implementation of this loop. If components 
 
 The public catalogue follows the survey's division of labour: §3 defines the harness state and update loop; §4 asks what can be edited; §5 asks how candidates are proposed; §6 asks how candidates are confirmed and persisted; §7 evaluates the complete evolution trajectory; and §8 records governance questions. The three catalogue fields therefore map to §4–§6 rather than replacing those sections.
 
-## Catalogue schema: the three axes
+### 3.1 Catalogue schema: the three axes
 
 The catalogue records three complementary fields. They describe different parts of one update loop; none is a synonym for another.
 
@@ -131,7 +147,7 @@ The same work may appear on more than one axis. The level says what is edited; t
 
 For the L3/L4 boundary, classify the primary level by the persistent write target, not by the role of the proposer. A system that searches for harness or agent code is L3; a system that persists changes to the improver, optimizer, or context-management mechanism is L4. If both are updated, record one primary target and the other as a secondary level, with the source location that supports the choice.
 
-### Representative entries
+### 4.1 Representative entries
 
 - **Prompt optimization (L0).** [MIPROv2](https://arxiv.org/abs/2406.11695) jointly proposes instructions and demonstrations with Bayesian optimization. [TextGrad](https://arxiv.org/abs/2406.07496) propagates textual critiques through a compound system. Both expose why “textual gradient” is useful as a proposal description but not as a numerical derivative. `[Proposal: surrogate-model search + trace-informed]` `[Confirmation: search-time selection; data: search-set]`.
 - **Memory and skill evolution (L1).** [ReasoningBank](https://arxiv.org/abs/2509.25140) distills reusable strategies from successes and failures. [Trace2Skill](https://arxiv.org/abs/2603.25158) merges trajectory-local lessons into patches. Their aggregation can broaden evidence, but it does not by itself create independent confirmation. `[Proposal: batch evidence + localized edit]` `[Confirmation: write-through or search-time selection, depending on the path]`.
@@ -300,7 +316,7 @@ Evaluate the trajectory along eight dimensions:
 
 Benchmarks such as [SWE-bench](https://arxiv.org/abs/2310.06770), [Terminal-Bench](https://openreview.net/forum?id=a7Qa4CcHak), [PaperBench](https://arxiv.org/abs/2504.01848), and long-horizon memory benchmarks can supply tasks. [AI Agents That Matter](https://arxiv.org/abs/2407.01502) and [HAL](https://arxiv.org/abs/2510.11977) motivate standardized cost and integrity reporting, while [RE-Bench](https://arxiv.org/abs/2411.15114) and [MLE-bench](https://arxiv.org/abs/2410.07095) provide long-horizon task substrates. None supplies the full protocol automatically. Episodic benchmarks do not measure persistent state; a visible smoke test may be only a proxy; and scores across different base models, harnesses, optimizers, and evaluators are not directly additive.
 
-## Literature map: mainline gaps
+## S1. Literature map: mainline gaps
 
 The catalogue is anchored to four literature gaps that follow the update loop. The links below are coverage anchors, not evidence that every protocol field has already been audited; see the [literature map](docs/literature-map.md) for the audit queue and the [protocol table](docs/audit-table.md) for source-level classifications.
 
