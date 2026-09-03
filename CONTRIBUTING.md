@@ -1,6 +1,6 @@
 # Contributing
 
-PRs are very welcome. This list has requirements beyond the usual awesome-list conventions, because its value is in the two analytical axes, not in coverage alone.
+PRs are very welcome. This list has requirements beyond the usual awesome-list conventions, because its value is in the three analytical axes, not in coverage alone.
 
 ## 1. Separate what a paper claims from what this list infers
 
@@ -47,7 +47,7 @@ If gate strength, split structure, or a triggering parameter is not confirmable 
 
 ## 6. Scope
 
-The object being optimized must be **model-external state**, modified using **run-time feedback**, with the **base model frozen**. Harness *design* work and purely weight-side methods belong only in the boundary section (§6). L5 (joint harness + weights) is included as a boundary case, not as core HarnessOpt.
+The object being optimized must be **model-external state**, modified using **run-time feedback**, with the **base model frozen**. Harness *design* work and purely weight-side methods belong only in the boundary notes of the README. L5 (joint harness + weights) is included as a boundary case, not as core HarnessOpt.
 
 ## 7. Corrections to the analysis are welcome
 

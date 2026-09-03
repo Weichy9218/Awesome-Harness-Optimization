@@ -10,14 +10,17 @@ Only terms used by the repository's analytical framework are included here. A la
 | $z\sim\mathcal D$ | a task sampled from the target distribution |
 | $s\in\mathcal S$ | model-external state: prompts, memory, workflows, tools, code, or optimizer state |
 | $\mathcal S_{\mathrm{edit}}$ | the subset of state the update process may modify |
-| $H_s(M,z)$ | execution of model $M$ on task $z$ under harness state $s$ |
+| $H_s(M,z;\xi)$ | execution of model $M$ on task $z$ under harness state $s$ with run randomness or environment seed $\xi$ |
 | $\tau$ | execution trajectory or trace |
 | $R(\tau)\in[0,1]$ | bounded task return used in the concentration results |
-| $f_M(s)$ | expected return $\mathbb E_{z\sim\mathcal D}[R(H_s(M,z))]$ |
-| $\ell(s;z)$ | per-task loss $1-R(H_s(M,z))$ |
-| $\epsilon(s)$ | population risk $\mathbb E_{z\sim\mathcal D}[\ell(s;z)]$ |
-| $\widehat\epsilon_V(s)$ | empirical risk on task set $V$ |
+| $Y(s,z;\xi)$ | realized return $R(H_s(M,z;\xi))$ for one run |
+| $f_M(s)$ | expected return $\mathbb E_{z,\xi}[Y(s,z;\xi)]$ |
+| $\ell(s;z,\xi)$ | per-run loss $1-Y(s,z;\xi)$; report the task-level seed aggregation used in an experiment |
+| $\epsilon(s)$ | population risk $\mathbb E_{z,\xi}[\ell(s;z,\xi)]$ |
+| $\widehat\epsilon_V(s)$ | empirical risk on task set $V$ after the stated seed aggregation |
 | $\widehat R_V(s)$ | mean empirical return $1-\widehat\epsilon_V(s)$ |
+
+The current architecture direction, **Everything Is a Plugin (EIP)**, treats tools, prompts, skills, providers, memory, verifiers, search strategies, stop conditions, UI components, and temporary resources as replaceable runtime components. EIP is an architecture target and audit boundary, not evidence that a system already supports safe live replacement.
 
 ## Update loop
 
@@ -25,11 +28,27 @@ Only terms used by the repository's analytical framework are included here. A la
 |---|---|
 | $Q$ | evidence collection from runs, traces, errors, or feedback |
 | $\mathcal E_t$ | evidence available in round $t$ |
-| $P$ | proposer mapping current state and evidence to candidate $\widetilde s_{t+1}$ |
+| $P_\phi$ | proposer mapping current state and evidence to candidate $\widetilde s_{t+1}$; $\phi$ denotes proposer parameters or policy |
 | $G$ | gate deciding whether and how the candidate enters persistent state |
 | $D_t$ | tasks that drive proposal evidence in round $t$ |
 | $V_t$ | tasks consulted by the gate in round $t$ |
 | $T$ | number of update rounds |
+
+One update is written as
+
+~~~math
+\mathcal E_t=Q(s_t;D_t),\qquad
+\widetilde s_{t+1}=P_\phi(s_t,\mathcal E_t),\qquad
+s_{t+1}=G(s_t,\widetilde s_{t+1};V_t).
+~~~
+
+The observation available to a proposer may be richer than the scalar return:
+
+~~~math
+\mathcal O(s,z;\xi)=\bigl(Y(s,z;\xi),\Psi(s,z;\xi)\bigr),
+~~~
+
+where $\Psi$ is semantic side information such as traces, errors, tool calls, or verifier feedback. It is not a derivative and does not constitute confirmation evidence.
 
 ## Zeroth-order terminology
 
@@ -60,6 +79,9 @@ Only terms used by the repository's analytical framework are included here. A la
 | **reuse count** | number of adaptive decisions influenced by a data set |
 | **evaluator protection** | runtime enforcement preventing edits to evaluators, task data, logging, or protected paths |
 | **behavioral rollback** | restoration of observable runtime state, including side effects, rather than files alone |
+| **two-stage atomic activation** | prepare and validate a component before swapping it into the live runtime; activation and cleanup are part of the transition |
+| **plugin lifecycle** | registration, dependency resolution, activation, deactivation, and cleanup for a replaceable runtime component |
+| **B1 / B2** | B1 is proposal stability; B2 is fixed-candidate confirmation on data not used by search |
 
 ## Statistical symbols
 
@@ -69,8 +91,8 @@ Only terms used by the repository's analytical framework are included here. A la
 | $\delta$ | allowed failure probability for a concentration statement |
 | $\mathcal C$ | a finite candidate class fixed independently of the validation sample |
 | $\mathcal U_L$ | a finite, validation-independent set of allowed edit scripts |
-| $\eta$ | a valid uniform bound on $\lvert\epsilon(s)-\widehat\epsilon_V(s)\rvert$ for the states being compared |
-| $\eta_T$ | the value of $\eta$ obtained from a $T$-round reachable class $\mathcal C_T$; grows as $\sqrt{T}$ under the assumptions of `pac-stability.md` §4.1 |
+| $\eta$ | a valid uniform bound on $\lvert\epsilon(s)-\widehat\epsilon_V(s)\rvert$ for the states being compared; two-sided, so it costs $\delta\to\delta/2$ relative to a one-sided bound |
+| $\eta_T$ | the value of $\eta$ obtained from a $T$-round reachable class $\mathcal C_T$; its **slack at fixed $m$** grows as $\sqrt{T}$ under the assumptions of `pac-stability.md` §4.1, and is typically vacuous at realistic $m$ and $T$ |
 | $\Delta$ | acceptance dead zone: the empirical improvement a gate requires before writing a candidate |
 | $\beta_{\mathrm{avg}}$ | expected sensitivity of the update algorithm to replacing or removing one training example; not a high-probability bound by itself |
 
