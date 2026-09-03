@@ -273,32 +273,62 @@ Benchmarks such as [SWE-bench](https://arxiv.org/abs/2310.06770), [Terminal-Benc
 
 ## 6. Future direction: governable evolution
 
-### 6.1 Lifecycle contracts for pluginized harnesses
+This section treats long-term evolution as a constrained state-transition problem. An increase in rule count is not evidence of increased capability. [Weng’s summary of harness-engineering challenges](https://lilianweng.github.io/posts/2026-07-04-harness/) identifies weak evaluators, context and memory lifecycle, negative results, diversity collapse, reward hacking, long-term success, and the role of humans. For HarnessOpt, these challenges become requirements on lifecycle, deployment boundaries, evaluators, state management, and authorization. The public discussions of DeepSeek Harness describe “Model + Harness = Agent” and “Everything Is a Plugin”; they are useful engineering cases for a pluginized runtime, but do not by themselves establish performance or self-improvement claims (see [q1](https://www.zhihu.com/question/2071331484284220938) and [q2](https://www.zhihu.com/question/2072255826778140869)).
 
-The Everything Is a Plugin direction is useful only if every component has an explicit lifecycle: load, validate, activate, observe, deactivate, clean up, and archive. The key test is behavioral restoration after rejection. A plugin registry should track dependencies and versions; runtime isolation should cover processes, ports, registrations, caches, and temporary resources; and memory and skill stores need deletion and compression policies as well as append operations.
+Long-running systems should preserve four invariants: candidates cannot modify the evaluation boundary; candidates and their side effects are revocable; runtime evidence is replayable and attributable; and durable writes are auditable with explicit data roles for confirmation.
 
-### 6.2 Allocate work by confirmation cost
+### 6.1 Plugin lifecycle, composability, and reversible state
 
-Proposal generation and confirmation require different resources. A testable deployment hypothesis is:
+Everything Is a Plugin requires more than additional extension points. Each component needs an auditable state machine:
 
-- a local sandbox generates candidates and runs contract, compile, smoke, and cheap replay checks;
-- an edge service maintains component registry, dependencies, versions, and replay metadata;
-- an independent evaluator handles fresh-task confirmation, long-horizon regression, and safety audit.
+`load → validate → stage → activate → observe → deactivate → cleanup → archive`
 
-This is not a claim that cloud makes data independent. Test promotion rate, validation latency, rollback cost, privacy exposure, dependency conflicts, and cross-version failure rate.
+`validate` checks contracts, permissions, and dependencies; `stage` constructs a candidate in isolation; `activate` is a recorded atomic state transition; and `deactivate` plus `cleanup` must revoke side effects such as processes, ports, event listeners, provider/tool registrations, caches, and temporary files. After rejection, the file tree, runtime resources, and persistent memory should return to the same parent state. Reverting versioned files alone is not behavioral rollback.
 
-### 6.3 Model–harness co-design
+A plugin registry should record versions, dependencies, capability declarations, permissions, state hashes, provenance, and compatibility constraints. It must address both forms of composability: whether unloading clears all temporal side effects, and whether a dependency change triggers revalidation of downstream components. Candidate writes and confirmation writes must be separate. A model-written dynamic plugin may run and be revoked inside an isolated sandbox; durable skills, memory, workflows, and Agent Notes should enter durable state only through version control, format checks, and human or independent confirmation. Agent Notes should use explicit `proposed`, `implemented`, `rejected`, and `archived` states, retaining rejection reasons, alternatives, and coverage gaps.
 
-A useful co-design loop has four observable steps: traces expose repeated failures; the harness proposes a local change or turns the trace into training data; fresh tasks confirm the change; stable experience is distilled into a reusable component or model. The decisive ablation is whether compensatory scaffolding can later be removed while the fresh-task gain remains. More rules or a higher final score alone do not show internalized capability.
+At runtime, a skill should be treated as replaceable, non-authoritative input. Only a recorded, versioned, and gated skill should impose persistent cross-task behavioral constraints; the model-visible catalogue and on-demand loading path should also be included in the event log.
 
-### 6.4 Open questions
+Event logs should be append-only and cover model-visible inputs, tool calls, subagents, context injection, evaluator outcomes, state snapshots, and cleanup actions. They provide the substrate for replay and attribution and record the separation between search and confirmation data. Memory and skill stores also need compression, expiry, merge, deletion, and recovery rules. Append-only accumulation without retirement eventually creates conflicts and changes routing and behavior distributions.
 
-The main unresolved questions are:
+### 6.2 Endpoint–edge–cloud: allocate work by confirmation cost
 
-1. What behavioral quantity should replace diff size as an edit bound?
-2. How can multi-round confirmation remain valid under reuse and task drift?
-3. How can non-parameter state be compressed, forgotten, and rolled back without losing verified behavior?
-4. How can independently evolved plugin lineages be merged and re-confirmed?
+Endpoint–edge–cloud is a testable responsibility-allocation hypothesis, not an established deployment fact. The endpoint handles low-latency interaction and candidate generation, the edge handles runtime control and state orchestration, and the cloud handles confirmation that needs independent data or larger budgets:
+
+| Layer | Primary responsibilities | State permissions and data boundary | Metrics to verify |
+|---|---|---|---|
+| **Endpoint** | Task interaction; candidate generation; contract, compile, smoke, and cheap replay; isolated execution of dynamic plugins; programmatic tool calling (PTC) programs for deterministic multi-step tool calls | Candidates and raw traces may be ephemeral; no direct writes to the evaluator, task sets, model route, or durable registry | Interaction latency, static rejection, smoke-filter benefit, endpoint rollback completeness, privacy leakage |
+| **Edge/control plane** | Schedule tasks and subprocesses; maintain plugin registry, versions, dependencies, and replay metadata; enforce policy, staged activation, canaries, and conflict checks; aggregate append-only events | Owns staging state and state hashes; protects evaluator, logs, and permission paths; edge scores alone cannot promote a candidate | Activation/cleanup completeness, dependency conflicts, validation latency, cross-version failure, promotion rate |
+| **Cloud/independent evaluator** | Fresh/OOD confirmation; long-horizon regression; safety and evaluation-integrity audits; cross-version statistics, lineage archival, and authorized model feedback | Confirmation data are not exposed to the proposer, selector, or stopping rule; tasks, evaluator, and model route are immutable; output returns a decision and does not activate a candidate directly | Fresh-task gain, old-task retention, confirmation cost, audit coverage, cross-tenant privacy, resource cost |
+
+Putting a task in the cloud does not create statistical independence by itself. The system must record data-access boundaries, confirmation refresh policy, candidate-freezing points, and whether confirmation rollouts flow back into search ranking. The value of endpoint–edge–cloud is separation of duties and cost; it does not change the assumptions behind a PAC-style boundary.
+
+### 6.3 Evaluators, long-term objectives, and failure diversity
+
+Many real tasks lack a fast, precise, and non-manipulable verifier. A single pass rate, unit test, or judge score covers only part of the objective and can invite reward hacking. The evaluation boundary should remain outside the editable surface and use layered evidence: static contracts and permission checks for executability, task outcomes for behavior, held-out/fresh tasks for generalization, and trace audits plus human review for safety, research judgment, and qualities that are difficult to formalize. The evolution loop should not be able to modify the evaluator, task data, logs, model route, or reasoning budget.
+
+Long-term success should include repository maintainability, ownership boundaries, migration cost, backward compatibility, and future debugging burden. A higher short-term completion rate does not replace these dimensions. For research and open-ended tasks, low-scoring branches with novelty or explanatory value should remain available under a separate budget, together with behavior descriptors, failure causes, and retry conditions; otherwise a population or archive collapses toward homogeneous solutions favored by the current evaluator.
+
+### 6.4 Memory routing, negative results, and attribution
+
+Failed attempts should not be silently overwritten. Each skill or Agent Note should carry its scope, evidence source, known counterexamples, alternatives, and state history; rejected candidates remain searchable but inactive. Compression and merging are valid only after all still-live contracts, reasons, and coverage gaps have been transferred to a new owner. At scale, a skill description is a routing key. Injecting the full catalogue into context will eventually fail, so semantic retrieval, hierarchical catalogues, or task-conditioned subsets are needed, with routing decisions logged.
+
+Append-only logs provide raw material for attribution but do not determine whether a failure came from incorrect skill content, model non-compliance, environment drift, or a task that should not have used the skill. Without component-level attribution, traces cannot reliably produce local proposals or determine whether a component should be edited, downweighted, expired, or removed.
+
+### 6.5 Model–harness co-design and human authorization
+
+A verifiable co-design loop has five steps: traces expose recurrent failures; the harness proposes a bounded edit within the declared editable surface; independent confirmation checks gain, non-regression, and safety; stable experience enters a reusable plugin or skill, or a separately controlled model-training process; and an ablation tests whether compensatory scaffolding can be removed while fresh-task gains remain. Only reduced scaffolding with retained cross-task behavior suggests that some experience may have been internalized. More rules or a higher endpoint score alone do not support that conclusion.
+
+The model may generate candidates autonomously, but durable write permission should be determined by independent gates and human oversight. Humans should review high-impact permissions, evaluator changes, lineage merges, semantic correctness, and long-term maintenance commitments at the appropriate abstraction level. The desired outcome is a traceable, human-gated durable state transition, not direct persistence of unverified experience.
+
+### 6.6 Open questions
+
+The main unresolved questions are four connected ones:
+
+1. Under weak or fuzzy evaluators, confirmation-set reuse, and task drift, how can multi-round promotion retain auditable independence and confidence?
+2. How should context, skill, and memory routing, compression, forgetting, and negative-result retention be managed over long horizons without losing verified behavior?
+3. How can the trade-off among stability, plasticity, exploratory diversity, and reward-hacking risk be quantified?
+4. How should high-cost confirmation, human review, and model adaptation be allocated across endpoint–edge–cloud, and how can behavior be re-confirmed after merging independently evolved plugin lineages?
 
 ## Companion documents
 
