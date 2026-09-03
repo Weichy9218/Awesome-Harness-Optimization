@@ -85,7 +85,7 @@ L0–L5 表是核心清单。边界阅读和文献地图中的锚点都会明确
 s_{t+1}=G(s_t,\widetilde s_{t+1};V_t).
 ```
 
-$Q$ 在提议任务 $D_t^{\mathrm{prop}}$ 上收集轨迹、回报、错误和反馈；$P_\phi$ 在 $\mathcal S_{\mathrm{edit}}$ 内形成候选；$G$ 接受、拒绝或回滚候选，若存在确认步骤，$G$ 还可以使用 $V_t$。候选 $\widetilde s_{t+1}$ 只有在状态转移规则允许后，才是持久状态 $s_{t+1}$。
+$Q$ 在提议任务 $D_t^{\mathrm{prop}}$ 上收集轨迹、回报、错误和反馈； $P_\phi$ 在 $\mathcal S_{\mathrm{edit}}$ 内形成候选； $G$ 接受、拒绝或回滚候选，若存在确认步骤， $G$ 还可以使用 $V_t$。候选 $\widetilde s_{t+1}$ 只有在状态转移规则允许后，才是持久状态 $s_{t+1}$。
 
 | 对象 | 作用 | 是否持久化 |
 |---|---|---:|
@@ -190,17 +190,17 @@ proposer 还可以得到比标量回报更丰富的观测：
 
 三条搜索轴对应提议过程的不同环节。证据构造说明查询哪些运行以及如何聚合观测；搜索几何限定候选编辑在表示空间中的形成区域；查询分配说明如何依据历史、surrogate 或保留候选决定下一次评测。三条轴在分析上可分解，在实现中可能相互耦合。
 
-为使对应关系可以核查，令 $\mathcal O_i(s)=\mathcal O(s,z_i;\xi_i)$、$Y_i(s)=Y(s,z_i;\xi_i)$ 和 $\Psi_i(s)=\Psi(s,z_i;\xi_i)$，并令 $\widehat f_D(s)=m^{-1}\sum_{i=1}^{m}Y_i(s)$。$s\oplus\delta$ 表示对状态 $s$ 应用合法编辑 $\delta$，$\mathcal H_t$ 表示第 $t$ 轮以前的状态、观测和分数历史，$b$ 表示在结果观测前已经声明的组件块；若系统提供行为描述子，记为 $d_{\mathrm{beh}}(s,s')$，候选谱系标识记为 $\lambda(s)$。经典 ZO 公式中的 $u$ 是随机数值方向，$d_x$ 是连续参数维度。Harness-native 状态通常没有这两个对象。
+为使对应关系可以核查，令 $\mathcal O_i(s)=\mathcal O(s,z_i;\xi_i)$、 $Y_i(s)=Y(s,z_i;\xi_i)$ 和 $\Psi_i(s)=\Psi(s,z_i;\xi_i)$，并令 $\widehat f_D(s)=m^{-1}\sum_{i=1}^{m}Y_i(s)$。 $s\oplus\delta$ 表示对状态 $s$ 应用合法编辑 $\delta$， $\mathcal H_t$ 表示第 $t$ 轮以前的状态、观测和分数历史， $b$ 表示在结果观测前已经声明的组件块；若系统提供行为描述子，记为 $d_{\mathrm{beh}}(s,s')$，候选谱系标识记为 $\lambda(s)$。经典 ZO 公式中的 $u$ 是随机数值方向， $d_x$ 是连续参数维度。Harness-native 状态通常没有这两个对象。
 
 | 设计轴 | 机制家族 | Harness-native 形式（形式化） | 与经典 derivative-free 方法的对应关系（形式化） | 对应强度 | 代表工作 |
 |---|---|---|---|---|---|
 | **证据构造** | single-state semantic proposal | $\delta_t=P_\phi(s_t,\{\mathcal O_i(s_t)\}_{i=1}^{m})$，候选为 $s_t\oplus\delta_t$，提议前不查询编辑状态。 | 只有目标接口对应。经典 one-point ZO 需要 $\widehat g_{1p}=(d_x/\mu)Y(x+\mu u)u$（或带基线修正的变体）；本类方法没有数值方向 $u$ 和步长 $\mu$，不构成该估计器。 | Interface | Reflexion、Voyager、ProTeGi、TextGrad |
-|  | batch evidence aggregation | $\overline{\Psi} _D(s)=\mathrm{Agg}(\{\Psi _i(s)\} _{i=1}^{m})$，并以 $\widehat f _D(s)$ 聚合回报。 | 对应同一点上的重复噪声查询：$\widehat f _m(s)=m^{-1}\sum_i y_i(s)$，在独立同分布假设下 $\mathrm{Var}[\widehat f _m(s)]=\sigma^2/m$；任务不是扰动方向。 | Interface | SkillOpt、SkillOpt-Lite、Trace2Skill、ExpeL、SkillForge |
+|  | batch evidence aggregation | $\overline{\Psi} _D(s)=\mathrm{Agg}(\{\Psi _i(s)\} _{i=1}^{m})$，并以 $\widehat f _D(s)$ 聚合回报。 | 对应同一点上的重复噪声查询： $\widehat f _m(s)=m^{-1}\sum_i y_i(s)$，在独立同分布假设下 $\mathrm{Var}[\widehat f _m(s)]=\sigma^2/m$；任务不是扰动方向。 | Interface | SkillOpt、SkillOpt-Lite、Trace2Skill、ExpeL、SkillForge |
 |  | paired state comparison | $\widehat\Delta_D(s,\delta)=m^{-1}\sum_i[Y(s\oplus\delta,z_i;\xi_i^+)-Y(s,z_i;\xi_i^-)]$。 | 对应 two-point ZO $\widehat g_{2p}=(d_x/(2\mu))[f(x+\mu u)-f(x-\mu u)]u$ 的比较骨架；没有连续参数化和可构造的正负扰动时，不是 central difference。 | Structural | SkillCAT、Trace2Skill 的 selective path |
 | **搜索几何** | block-local edit | $s'=s^{(b\leftarrow\delta_b)}$，其中块 $b$ 在结果观测前固定。 | 对应 block-coordinate 更新 $x'=x+U_b d_b$；需要预定义坐标，且不假定块间可分离。 | Structural | SkillAdaptor、AgentSquare、DemoEvolve、AlphaEvolve |
 |  | bounded local search | $s'\in\mathcal N_L(s)\cap\mathcal S_{\mathrm{feas}}$，例如 $\mathcal N_L(s)=\{s':d_{\mathrm{syn}}(s,s')\le L\}$。 | 与局部直接搜索或 trust-region 约束 $d^\top d\le\Delta_k^2$ 具有形式相似性；若 $d_{\mathrm{syn}}$ 不是行为距离且没有半径更新规则，只能称 bounded edit。 | Structural | SkillOpt、SkillOpt-Lite、SkillForge、Self-Harness |
 | **查询分配** | history 或 surrogate allocation | $a_{t+1}\in\arg\max_{a\in\mathcal A}\alpha_t(a\mid\mathcal H_t)$，其中 $a$ 可表示候选、任务或 rollout 预算。 | 对应 acquisition 选择 $x_{t+1}\in\arg\max_x\alpha_t(x\mid\mathcal H_t)$ 或显式 bandit allocation；缺少 $\alpha_t$ 时只是历史启发式。 | Strict* | ProTeGi、MIPROv2、AgentSquare、AdaEvolve |
-|  | population 或 archive search | $A _{t+1}=\mathrm{Select} _K(A _t\cup\mathrm{Offspring}(A _t))$，选择可依赖 $(\widehat f,d _{\mathrm{beh}},\lambda)$。 | 对应 evolutionary update $P _{t+1}=\mathrm{Select}(P _t\cup\mathrm{Mutate}(P _t))$ 或 Pareto archive；保留候选不等于收敛，也不提供独立确认。 | Structural | GEPA、Promptbreeder、DGM、AlphaEvolve、ShinkaEvolve、ThetaEvolve、MCE、Meta-Harness |
+|  | population 或 archive search | $A _{t+1}=\mathrm{S}\mathrm{elect} _K(A _t\cup\mathrm{Offspring}(A _t))$，选择可依赖 $(\widehat f,d _{\mathrm{beh}},\lambda)$。 | 对应 evolutionary update $P _{t+1}=\mathrm{S}\mathrm{elect}_K(P _t\cup\mathrm{Mutate}(P _t))$ 或 Pareto archive；保留候选不等于收敛，也不提供独立确认。 | Structural | GEPA、Promptbreeder、DGM、AlphaEvolve、ShinkaEvolve、ThetaEvolve、MCE、Meta-Harness |
 
 `*Strict` 是条件性标记：只有原文给出明确的 acquisition 或 bandit 规则及抽样假设时才成立。否则，该方法实例应标为 structural 或 heuristic。
 
@@ -257,7 +257,7 @@ C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\
 +\sqrt{\frac{\ln(1/\delta)}{2m}}
 ```
 
-以至少 $1-\delta$ 的概率成立。如果一个任务使用多个 seed，seed 是给定任务条件下的重复观测；在完成任务级聚合后，$m$ 才表示独立任务数。对同一集合进行自适应复用后，改名为 validation 或 held-out 也不会恢复独立性。
+以至少 $1-\delta$ 的概率成立。如果一个任务使用多个 seed，seed 是给定任务条件下的重复观测；在完成任务级聚合后， $m$ 才表示独立任务数。对同一集合进行自适应复用后，改名为 validation 或 held-out 也不会恢复独立性。
 
 B1 与 B2 不能互相替代。即使提议过程稳定，也可能在复用的验证集上过拟合；真正独立的确认集可以评估固定候选，但不能证明 proposer 稳定。
 

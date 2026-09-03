@@ -13,6 +13,14 @@ INLINE_CODE = re.compile(r"(?<!`)`+(?!`)(.+?)(?<!`)`+(?!`)")
 # GitHub also supports $`...`$, but the repository standardizes on plain
 # $...$ because its current formulas do not need Markdown disambiguation.
 BACKTICK_INLINE_MATH = re.compile(r"\$`[^`\n]*`\$")
+# GitHub's inline GFM parser leaves text commands beginning with "Select"
+# unrendered even though MathJax accepts them.
+GFM_SELECT_TEXT = re.compile(
+    r"\\(?:mathrm|text|mathbf|mathsf|mathop)\{[Ss]elect"
+)
+# An ASCII space before inline math keeps GitHub's parser from treating a
+# delimiter adjacent to CJK text or punctuation as ordinary Markdown.
+CJK_ADJACENT_MATH = re.compile(r"[\u3400-\u9fff][，。；：、！？]?\$(?!\$)")
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})([A-Za-z0-9_-]*)\s*$")
 
 
@@ -52,6 +60,19 @@ def check_file(path: Path) -> list[str]:
                     f"{path}:{line_number}: backtick-wrapped inline math; use $...$"
                 )
             remaining = INLINE_CODE.sub("", line)
+            if any(
+                GFM_SELECT_TEXT.search(match.group(1))
+                for match in INLINE_MATH.finditer(remaining)
+            ):
+                errors.append(
+                    f"{path}:{line_number}: GitHub leaves an inline Select text "
+                    "operator unrendered; split or rename the operator"
+                )
+            if CJK_ADJACENT_MATH.search(remaining):
+                errors.append(
+                    f"{path}:{line_number}: inline math is adjacent to CJK text "
+                    "or punctuation; add a separating space"
+                )
             remaining = INLINE_MATH.sub("", remaining).replace("$$", "")
             remaining = remaining.replace(r"\$", "")
             if "$" not in remaining:
