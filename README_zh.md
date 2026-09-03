@@ -29,27 +29,27 @@
 
 ## 收录范围
 
-固定基座模型 $M$、任务分布 $\mathcal D$ 和外部评价边界。设 $s$ 为模型外部的软件状态，包括 prompt、context、memory、workflow、tool、agent code 和 optimizer code。Harness 在状态 $s$ 下执行任务 $z$，得到 $\tau=H_s(M,z)$。
+固定基座模型 $`M`$、任务分布 $`\mathcal D`$ 和外部评价边界。设 $`s`$ 为模型外部的软件状态，包括 prompt、context、memory、workflow、tool、agent code 和 optimizer code。Harness 在状态 $`s`$ 下执行任务 $`z`$，得到 $`\tau=H_s(M,z)`$。
 
 本文只收录同时满足以下条件的工作：
 
 1. 本轮更新中基座模型保持固定；
-2. 运行时证据影响对显式集合 $\mathcal S_{\mathrm{edit}}$ 的修改；
+2. 运行时证据影响对显式集合 $`\mathcal S_{\mathrm{edit}}`$ 的修改；
 3. 修改会影响后续运行，可以通过确认门进入，也可以无条件写入。
 
 收录对象包括 prompt 优化、自演化 memory 和 skill、workflow 搜索、自修改 Harness code，以及 optimizer 或 meta-harness code。L5 的 Harness 与权重联合更新属于边界情形。纯权重训练和手工设计 Harness 只在能够说明边界时出现。
 
 ## 更新架构
 
-一次更新包含四个不同对象：可编辑集合 $\mathcal S_{\mathrm{edit}}$、证据收集 $Q$、候选提议器 $P_\phi$ 和状态转移门 $G$。
+一次更新包含四个不同对象：可编辑集合 $`\mathcal S_{\mathrm{edit}}`$、证据收集 $`Q`$、候选提议器 $`P_\phi`$ 和状态转移门 $`G`$。
 
-~~~math
+```math
 \mathcal E_t=Q(s_t;D_t),\qquad
 \widetilde s_{t+1}=P_\phi(s_t,\mathcal E_t),\qquad
 s_{t+1}=G(s_t,\widetilde s_{t+1};V_t).
-~~~
+```
 
-$Q$ 在提议任务 $D_t$ 上收集轨迹、回报、错误和反馈；$P_\phi$ 在 $\mathcal S_{\mathrm{edit}}$ 内形成候选；$G$ 使用确认数据 $V_t$ 接受、拒绝或回滚候选。候选 $\widetilde s_{t+1}$ 只有在状态转移规则允许后，才是持久状态 $s_{t+1}$。
+$`Q`$ 在提议任务 $`D_t`$ 上收集轨迹、回报、错误和反馈；$`P_\phi`$ 在 $`\mathcal S_{\mathrm{edit}}`$ 内形成候选；$`G`$ 使用确认数据 $`V_t`$ 接受、拒绝或回滚候选。候选 $`\widetilde s_{t+1}`$ 只有在状态转移规则允许后，才是持久状态 $`s_{t+1}`$。
 
 ~~~mermaid
 flowchart LR
@@ -128,20 +128,20 @@ ZO analogy 只表示信息或搜索角色，不表示 LLM 编辑器计算了数�
 
 固定模型和任务分布后，一次运行产生：
 
-~~~math
+```math
 Y(s,z;\xi)=R\!\left(H_s(M,z;\xi)\right),\qquad
 f_M(s)=\mathbb E_{z,\xi}[Y(s,z;\xi)].
-~~~
+```
 
-对于文本、程序和文件树，除非先给出显式的连续参数化，否则 $\nabla_s f_M(s)$ 没有定义。因此，HarnessOpt 将运行过程视为目标接口：关于 $f_M$ 的信息只能通过部署状态并观察其结果获得。
+对于文本、程序和文件树，除非先给出显式的连续参数化，否则 $`\nabla_s f_M(s)`$ 没有定义。因此，HarnessOpt 将运行过程视为目标接口：关于 $`f_M`$ 的信息只能通过部署状态并观察其结果获得。
 
 proposer 还可以得到比标量回报更丰富的观测：
 
-~~~math
+```math
 \mathcal O(s,z;\xi)=\bigl(Y(s,z;\xi),\Psi(s,z;\xi)\bigr),
-~~~
+```
 
-其中 $\Psi$ 包括轨迹、错误、工具调用和 verifier feedback。它改变了 $P_\phi$ 可用的信息，但不是数值导数、无偏梯度估计器或确认数据。除非状态比较和执行条件受到控制，轨迹本身不能识别某次编辑的因果贡献。
+其中 $`\Psi`$ 包括轨迹、错误、工具调用和 verifier feedback。它改变了 $`P_\phi`$ 可用的信息，但不是数值导数、无偏梯度估计器或确认数据。除非状态比较和执行条件受到控制，轨迹本身不能识别某次编辑的因果贡献。
 
 需要区分三件事：
 
@@ -153,23 +153,23 @@ proposer 还可以得到比标量回报更丰富的观测：
 
 三条搜索轴对应提议过程的不同环节。证据构造说明查询哪些运行以及如何聚合观测；搜索几何说明编辑可以在表示空间的哪一部分形成；查询分配说明如何依据历史、surrogate 或保留候选决定下一次评测。三条轴在分析上可分解，在实现中可能相互耦合。
 
-为使对应关系可以核查，令 $\mathcal O_i(s)=\mathcal O(s,z_i;\xi_i)$、$Y_i(s)=Y(s,z_i;\xi_i)$ 和 $\Psi_i(s)=\Psi(s,z_i;\xi_i)$，并令 $\widehat f_D(s)=m^{-1}\sum_{i=1}^{m}Y_i(s)$。$s\oplus\delta$ 表示对状态 $s$ 应用合法编辑 $\delta$，$\mathcal H_t$ 表示第 $t$ 轮以前的状态、观测和分数历史，$b$ 表示在结果观测前已经声明的组件块；若系统提供行为描述子，记为 $d_{\mathrm{beh}}(s,s')$，候选谱系标识记为 $\lambda(s)$。经典 ZO 公式中的 $u$ 是随机数值方向，$d_x$ 是连续参数维度；Harness-native 状态通常没有这两个对象。
+为使对应关系可以核查，令 $`\mathcal O_i(s)=\mathcal O(s,z_i;\xi_i)`$、$`Y_i(s)=Y(s,z_i;\xi_i)`$ 和 $`\Psi_i(s)=\Psi(s,z_i;\xi_i)`$，并令 $`\widehat f_D(s)=m^{-1}\sum_{i=1}^{m}Y_i(s)`$。$`s\oplus\delta`$ 表示对状态 $`s`$ 应用合法编辑 $`\delta`$，$`\mathcal H_t`$ 表示第 $`t`$ 轮以前的状态、观测和分数历史，$`b`$ 表示在结果观测前已经声明的组件块；若系统提供行为描述子，记为 $`d_{\mathrm{beh}}(s,s')`$，候选谱系标识记为 $`\lambda(s)`$。经典 ZO 公式中的 $`u`$ 是随机数值方向，$`d_x`$ 是连续参数维度；Harness-native 状态通常没有这两个对象。
 
 | 设计轴 | 机制家族 | Harness-native 形式（形式化） | 与经典 derivative-free 方法的对应关系（形式化） | 代表工作 |
 |---|---|---|---|---|
-| **证据构造** | single-state semantic proposal | $\delta_t=P_\phi(s_t,\{\mathcal O_i(s_t)\}_{i=1}^{m})$，候选为 $s_t\oplus\delta_t$，提议前不查询编辑状态。 | 只有目标接口对应。经典 one-point ZO 需要 $\widehat g_{1p}=(d_x/\mu)Y(x+\mu u)u$（或带基线修正的变体）；本类方法没有数值方向 $u$ 和步长 $\mu$，不构成该估计器。 | Reflexion、Voyager、ProTeGi、TextGrad |
-|  | batch evidence aggregation | $\overline{\Psi}_D(s)=\operatorname{Agg}(\{\Psi_i(s)\}_{i=1}^{m})$，并以 $\widehat f_D(s)$ 聚合回报。 | 对应同一点上的重复噪声查询：$\widehat f_m(s)=m^{-1}\sum_i y_i(s)$，在独立同分布假设下 $\operatorname{Var}[\widehat f_m(s)]=\sigma^2/m$；任务不是扰动方向。 | SkillOpt、SkillOpt-Lite、Trace2Skill、ExpeL、SkillForge |
-|  | paired state comparison | $\widehat\Delta_D(s,\delta)=m^{-1}\sum_i[Y(s\oplus\delta,z_i;\xi_i^+)-Y(s,z_i;\xi_i^-)]$。 | 对应 two-point ZO $\widehat g_{2p}=(d_x/(2\mu))[f(x+\mu u)-f(x-\mu u)]u$ 的比较骨架；没有连续参数化和可构造的正负扰动时，不是 central difference。 | SkillCAT、Trace2Skill 的 selective path |
-| **搜索几何** | block-local edit | $s'=s^{(b\leftarrow\delta_b)}$，其中块 $b$ 在结果观测前固定。 | 对应 block-coordinate 更新 $x'=x+U_b d_b$；需要预定义坐标，且不假定块间可分离。 | SkillAdaptor、AgentSquare、DemoEvolve、AlphaEvolve |
-|  | bounded local search | $s'\in\mathcal N_L(s)\cap\mathcal S_{\mathrm{feas}}$，例如 $\mathcal N_L(s)=\{s':d_{\mathrm{syn}}(s,s')\le L\}$。 | 与局部直接搜索或 trust-region 约束 $\|d\|\le\Delta_k$ 具有形式相似性；若 $d_{\mathrm{syn}}$ 不是行为距离且没有半径更新规则，只能称 bounded edit。 | SkillOpt、SkillOpt-Lite、SkillForge、Self-Harness |
-| **查询分配** | history 或 surrogate allocation | $a_{t+1}\in\arg\max_{a\in\mathcal A}\alpha_t(a\mid\mathcal H_t)$，其中 $a$ 可表示候选、任务或 rollout 预算。 | 对应 acquisition 选择 $x_{t+1}\in\arg\max_x\alpha_t(x\mid\mathcal H_t)$ 或显式 bandit allocation；缺少 $\alpha_t$ 时只是历史启发式。 | ProTeGi、MIPROv2、AgentSquare、AdaEvolve |
-|  | population 或 archive search | $A_{t+1}=\operatorname{Select}_K(A_t\cup\operatorname{Offspring}(A_t))$，选择可依赖 $(\widehat f,d_{\mathrm{beh}},\lambda)$。 | 对应 evolutionary update $P_{t+1}=\operatorname{Select}(P_t\cup\operatorname{Mutate}(P_t))$ 或 Pareto archive；保留候选不等于收敛，也不提供独立确认。 | GEPA、Promptbreeder、DGM、AlphaEvolve、Meta-Harness |
+| **证据构造** | single-state semantic proposal | $`\delta_t=P_\phi(s_t,\{\mathcal O_i(s_t)\}_{i=1}^{m})`$，候选为 $`s_t\oplus\delta_t`$，提议前不查询编辑状态。 | 只有目标接口对应。经典 one-point ZO 需要 $`\widehat g_{1p}=(d_x/\mu)Y(x+\mu u)u`$（或带基线修正的变体）；本类方法没有数值方向 $`u`$ 和步长 $`\mu`$，不构成该估计器。 | Reflexion、Voyager、ProTeGi、TextGrad |
+|  | batch evidence aggregation | $`\overline{\Psi}_D(s)=\mathrm{Agg}(\{\Psi_i(s)\}_{i=1}^{m})`$，并以 $`\widehat f_D(s)`$ 聚合回报。 | 对应同一点上的重复噪声查询：$`\widehat f_m(s)=m^{-1}\sum_i y_i(s)`$，在独立同分布假设下 $`\mathrm{Var}[\widehat f_m(s)]=\sigma^2/m`$；任务不是扰动方向。 | SkillOpt、SkillOpt-Lite、Trace2Skill、ExpeL、SkillForge |
+|  | paired state comparison | $`\widehat\Delta_D(s,\delta)=m^{-1}\sum_i[Y(s\oplus\delta,z_i;\xi_i^+)-Y(s,z_i;\xi_i^-)]`$。 | 对应 two-point ZO $`\widehat g_{2p}=(d_x/(2\mu))[f(x+\mu u)-f(x-\mu u)]u`$ 的比较骨架；没有连续参数化和可构造的正负扰动时，不是 central difference。 | SkillCAT、Trace2Skill 的 selective path |
+| **搜索几何** | block-local edit | $`s'=s^{(b\leftarrow\delta_b)}`$，其中块 $`b`$ 在结果观测前固定。 | 对应 block-coordinate 更新 $`x'=x+U_b d_b`$；需要预定义坐标，且不假定块间可分离。 | SkillAdaptor、AgentSquare、DemoEvolve、AlphaEvolve |
+|  | bounded local search | $`s'\in\mathcal N_L(s)\cap\mathcal S_{\mathrm{feas}}`$，例如 $`\mathcal N_L(s)=\{s':d_{\mathrm{syn}}(s,s')\le L\}`$。 | 与局部直接搜索或 trust-region 约束 $`d^\top d\le\Delta_k^2`$ 具有形式相似性；若 $`d_{\mathrm{syn}}`$ 不是行为距离且没有半径更新规则，只能称 bounded edit。 | SkillOpt、SkillOpt-Lite、SkillForge、Self-Harness |
+| **查询分配** | history 或 surrogate allocation | $`a_{t+1}\in\arg\max_{a\in\mathcal A}\alpha_t(a\mid\mathcal H_t)`$，其中 $`a`$ 可表示候选、任务或 rollout 预算。 | 对应 acquisition 选择 $`x_{t+1}\in\arg\max_x\alpha_t(x\mid\mathcal H_t)`$ 或显式 bandit allocation；缺少 $`\alpha_t`$ 时只是历史启发式。 | ProTeGi、MIPROv2、AgentSquare、AdaEvolve |
+|  | population 或 archive search | $`A_{t+1}=\mathrm{Select}_K(A_t\cup\mathrm{Offspring}(A_t))`$，选择可依赖 $`(\widehat f,d_{\mathrm{beh}},\lambda)`$。 | 对应 evolutionary update $`P_{t+1}=\mathrm{Select}(P_t\cup\mathrm{Mutate}(P_t))`$ 或 Pareto archive；保留候选不等于收敛，也不提供独立确认。 | GEPA、Promptbreeder、DGM、AlphaEvolve、Meta-Harness |
 
 表中的公式是角色级形式化，不把离散编辑空间连续化。interface correspondence 只要求目标信息通过运行获得；structural correspondence 还要求存在预先定义的编辑单元、邻域或保留规则；strict correspondence 则要求满足经典算子的数值参数化、更新规则、距离结构和抽样假设。只有在这些条件同时成立时，才可以使用 central difference、trust region、bandit allocation 等经典术语。任何一个标签都不能单独推出收敛率、方差下降、行为半径或独立确认。
 
 ### 3.3 结构与成本
 
-可编辑面决定搜索算子能够使用的结构。令 $\mathcal S_{\mathrm{feas}}\subseteq\mathcal S_{\mathrm{edit}}$ 表示满足 compile、type、interface 和写入路径契约的状态集合。静态检查可以判定候选是否属于这一构造性子集，但不能估计 $f_M$，也不能证明语义正确。
+可编辑面决定搜索算子能够使用的结构。令 $`\mathcal S_{\mathrm{feas}}\subseteq\mathcal S_{\mathrm{edit}}`$ 表示满足 compile、type、interface 和写入路径契约的状态集合。静态检查可以判定候选是否属于这一构造性子集，但不能估计 $`f_M`$，也不能证明语义正确。
 
 组件边界、allowlist、feature toggle、版本快照和确定性 replay 可以使局部编辑及成对比较具备可执行条件。这些结构不意味着代码优于文本。代码提供更强的结构约束，同时引入耦合、副作用和更大的回滚面。syntactic edit budget 只限制描述空间；如果没有额外的行为度量，它不能限制执行行为的变化幅度。
 
@@ -177,9 +177,9 @@ proposer 还可以得到比标量回报更丰富的观测：
 
 Harness 查询的成本不相同，可用下面的分解式记账：
 
-~~~math
+```math
 C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\mathrm{smoke}}c_{\mathrm{smoke}}+n_{\mathrm{task}}c_{\mathrm{task}}.
-~~~
+```
 
 静态检查和 smoke test 在完整 task rollout 前过滤候选，但不能替代任务级确认。search evidence 和 confirmation evidence 必须分开统计。只有当任务、seed 和环境对齐后产生的协方差下降足以抵消额外执行成本时，成对评估才有统计上的理由；paired 标签本身不能证明这种下降。
 
@@ -191,9 +191,9 @@ C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\
 
 ### 4.1 两个不同的统计问题
 
-令 $\mathcal A$ 将提议样本 $D_n$ 映射为持久状态，令 $x$ 为独立评测任务，令 $D_n^{(i\leftarrow x_i')}$ 表示用独立样本替换第 $i$ 个提议样本。提议稳定性可用 expected replace-one sensitivity 表示：
+令 $`\mathcal A`$ 将提议样本 $`D_n`$ 映射为持久状态，令 $`x`$ 为独立评测任务，令 $`D_n^{(i\leftarrow x_i')}`$ 表示用独立样本替换第 $`i`$ 个提议样本。提议稳定性可用 expected replace-one sensitivity 表示：
 
-~~~math
+```math
 \beta_{\mathrm{avg}}
 =
 \mathbb E\!\left[
@@ -203,20 +203,20 @@ C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\
 \ell(\mathcal A(D_n^{(i\leftarrow x_i')});x)
 \right|
 \right].
-~~~
+```
 
-**B1，提议稳定性**，关注这一敏感性是否足够小。batch evidence、跨任务聚合和有界编辑可能降低单个提议样本对状态的影响。本文核查的系统没有系统测量 $\beta_{\mathrm{avg}}$，因此它属于设计假设，不是实证保证。expected on-average stability 本身也不能推出高概率界。
+**B1，提议稳定性**，关注这一敏感性是否足够小。batch evidence、跨任务聚合和有界编辑可能降低单个提议样本对状态的影响。本文核查的系统没有系统测量 $`\beta_{\mathrm{avg}}`$，因此它属于设计假设，不是实证保证。expected on-average stability 本身也不能推出高概率界。
 
-**B2，固定候选确认**，关注一个在没有使用确认样本 $V_m$ 的情况下被固定的候选，是否在新任务上表现良好。若 $V_m\sim\mathcal D^m$，损失取值在 $[0,1]$ 内，且 $V_m$ 没有参与候选生成、选择或停止决策，则 Hoeffding 不等式给出：
+**B2，固定候选确认**，关注一个在没有使用确认样本 $`V_m`$ 的情况下被固定的候选，是否在新任务上表现良好。若 $`V_m\sim\mathcal D^m`$，损失取值在 $`[0,1]`$ 内，且 $`V_m`$ 没有参与候选生成、选择或停止决策，则 Hoeffding 不等式给出：
 
-~~~math
+```math
 \epsilon(\widetilde s)
 \le
 \widehat\epsilon_{V_m}(\widetilde s)
 +\sqrt{\frac{\ln(1/\delta)}{2m}}
-~~~
+```
 
-以至少 $1-\delta$ 的概率成立。如果一个任务使用多个 seed，seed 是给定任务条件下的重复观测；在完成任务级聚合后，$m$ 才表示独立任务数。对同一集合进行自适应复用后，改名为 validation 或 held-out 也不会恢复独立性。
+以至少 $`1-\delta`$ 的概率成立。如果一个任务使用多个 seed，seed 是给定任务条件下的重复观测；在完成任务级聚合后，$`m`$ 才表示独立任务数。对同一集合进行自适应复用后，改名为 validation 或 held-out 也不会恢复独立性。
 
 B1 与 B2 不能互相替代。提议过程稳定，仍可能在复用的验证集上过拟合；真正独立的确认集可以评估固定候选，但不能证明 proposer 稳定。
 
@@ -240,7 +240,7 @@ B1 与 B2 不能互相替代。提议过程稳定，仍可能在复用的验证�
 
 ### 4.3 B2 之外的三个条件
 
-若任务分布划分为 $K$ 个任务簇，可写为 $\epsilon(s)=\sum_{k=1}^{K}p_k\epsilon_k(s)$。概率质量为 $p_k$ 的任务簇发生幅度为 $\Delta\epsilon_k$ 的退化时，总体风险只变化 $p_k\Delta\epsilon_k$。即使该簇的损失显著恶化，变化仍可能小于确认半径 $\eta$。因此，任务簇级 non-regression 需要分层采样和分别报告。
+若任务分布划分为 $`K`$ 个任务簇，可写为 $`\epsilon(s)=\sum_{k=1}^{K}p_k\epsilon_k(s)`$。概率质量为 $`p_k`$ 的任务簇发生幅度为 $`\Delta\epsilon_k`$ 的退化时，总体风险只变化 $`p_k\Delta\epsilon_k`$。即使该簇的损失显著恶化，变化仍可能小于确认半径 $`\eta`$。因此，任务簇级 non-regression 需要分层采样和分别报告。
 
 1. **判据覆盖。** 损失必须覆盖目标能力、重要任务簇、安全和策略维度。总体分数提高时，低概率能力仍可能退化。
 2. **评价边界。** 任务、评价器、模型路由、日志、权限和受保护路径必须位于可编辑面之外，或由运行时强制保护。
@@ -256,7 +256,7 @@ B1 与 B2 不能互相替代。提议过程稳定，仍可能在复用的验证�
 |---|---|
 | **固定边界** | model、evaluator、tools、environment、permissions、editable surface |
 | **数据角色** | proposal、selection、confirmation、regression、final-test 集合；样本量；复用次数；proposer 可见范围 |
-| **状态历史** | $s_0$、每个接受的 $s_t$、被拒候选、最终 $s_T$，以及 old-task/OOD/fresh-task 曲线 |
+| **状态历史** | $`s_0`$、每个接受的 $`s_t`$、被拒候选、最终 $`s_T`$，以及 old-task/OOD/fresh-task 曲线 |
 | **运行成本** | token、tool call、wall-clock、task rollout、memory 增长、人工介入和 rollback 成本 |
 | **审计产物** | diff、trace、seed、evaluator 配置、replay 命令、安全检查和 rejected branch |
 

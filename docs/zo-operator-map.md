@@ -4,22 +4,22 @@ This note defines how the repository uses ZO language to compare HarnessOpt prop
 
 ## 1. Objective interface and side information
 
-For a frozen base model $M$, task $z\sim\mathcal D$, and editable state $s$, define
+For a frozen base model $`M`$, task $`z\sim\mathcal D`$, and editable state $`s`$, define
 
-~~~math
+```math
 Y(s,z;\xi)=R\!\left(H_s(M,z;\xi)\right),\qquad
 f_M(s)=\mathbb E_{z,\xi}[Y(s,z;\xi)].
-~~~
+```
 
-For text, code, and file trees, $\nabla_s f_M(s)$ is not defined without an explicit continuous parameterization. The deployed objective is still observable through execution, which motivates a zeroth-order view of the objective interface.
+For text, code, and file trees, $`\nabla_s f_M(s)`$ is not defined without an explicit continuous parameterization. The deployed objective is still observable through execution, which motivates a zeroth-order view of the objective interface.
 
 A proposer may receive more than a scalar:
 
-~~~math
+```math
 \mathcal O(s,z;\xi)=\bigl(Y(s,z;\xi),\Psi(s,z;\xi)\bigr),
-~~~
+```
 
-where $\Psi$ contains traces, errors, tool calls, and verifier feedback. This side information can improve proposal quality, but it is not a numerical derivative, an unbiased estimator, or candidate confirmation.
+where $`\Psi`$ contains traces, errors, tool calls, and verifier feedback. This side information can improve proposal quality, but it is not a numerical derivative, an unbiased estimator, or candidate confirmation.
 
 The repository therefore separates:
 
@@ -33,7 +33,7 @@ The repository therefore separates:
 |---|---|---|---|
 | one-point | evaluate one perturbed numeric point | revise from one scored rollout or one candidate | no random direction or gradient estimate is implied |
 | batch evidence | average several noisy observations | aggregate failures or critiques across tasks | tasks are samples, not perturbation directions |
-| contrastive diagnosis | compare paired evaluations | compare success/failure traces or alternatives | no $s+\mu u$ and $s-\mu u$ symmetry is implied |
+| contrastive diagnosis | compare paired evaluations | compare success/failure traces or alternatives | no $`s+\mu u`$ and $`s-\mu u`$ symmetry is implied |
 | trace-informed proposal | use observation details beyond a scalar | condition an edit on traces, errors, or critiques | semantic feedback is not a derivative |
 | history-conditioned proposal | adapt from previous observations | condition on earlier states, scores, or feedback | history dependence is not numerical momentum |
 | localized edit | change one coordinate or block | patch a named entry, file, module, node, or skill | the block must be defined before outcome observation |

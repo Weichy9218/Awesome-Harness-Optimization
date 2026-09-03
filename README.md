@@ -29,27 +29,27 @@
 
 ## Scope
 
-Fix a base model $M$, a task distribution $\mathcal D$, and an external evaluation boundary. Let $s$ be model-external software state: prompts, context, memory, workflows, tools, agent code, or optimizer code. A harness executes task $z$ as $\tau=H_s(M,z)$.
+Fix a base model $`M`$, a task distribution $`\mathcal D`$, and an external evaluation boundary. Let $`s`$ be model-external software state: prompts, context, memory, workflows, tools, agent code, or optimizer code. A harness executes task $`z`$ as $`\tau=H_s(M,z)`$.
 
 This list includes work that meets all three conditions:
 
 1. the base model is fixed for the update under discussion;
-2. run-time evidence influences a change to an explicitly delimited state set $\mathcal S_{\mathrm{edit}}$; and
+2. run-time evidence influences a change to an explicitly delimited state set $`\mathcal S_{\mathrm{edit}}`$; and
 3. the change affects later runs, either through a gate or through an unconditional write.
 
 The list includes prompt optimization, self-evolving memory and skills, workflow search, self-modifying harness code, and optimizer/meta-harness code. L5 methods that update harness and weights together are boundary cases. Weight-only training and hand-authored harness design are listed only when they clarify the boundary.
 
 ## The update architecture
 
-One update has four distinct objects: the editable set $\mathcal S_{\mathrm{edit}}$, evidence collection $Q$, proposer $P_\phi$, and transition gate $G$.
+One update has four distinct objects: the editable set $`\mathcal S_{\mathrm{edit}}`$, evidence collection $`Q`$, proposer $`P_\phi`$, and transition gate $`G`$.
 
-~~~math
+```math
 \mathcal E_t=Q(s_t;D_t),\qquad
 \widetilde s_{t+1}=P_\phi(s_t,\mathcal E_t),\qquad
 s_{t+1}=G(s_t,\widetilde s_{t+1};V_t).
-~~~
+```
 
-Here $Q$ collects traces, returns, errors, and feedback on proposal tasks $D_t$; $P_\phi$ creates a candidate inside $\mathcal S_{\mathrm{edit}}$; and $G$ accepts, rejects, or rolls back the candidate using confirmation data $V_t$. The candidate $\widetilde s_{t+1}$ is not the persistent state $s_{t+1}$ until the transition rule says so.
+Here $`Q`$ collects traces, returns, errors, and feedback on proposal tasks $`D_t`$; $`P_\phi`$ creates a candidate inside $`\mathcal S_{\mathrm{edit}}`$; and $`G`$ accepts, rejects, or rolls back the candidate using confirmation data $`V_t`$. The candidate $`\widetilde s_{t+1}`$ is not the persistent state $`s_{t+1}`$ until the transition rule says so.
 
 ~~~mermaid
 flowchart LR
@@ -126,22 +126,22 @@ The same work may appear on more than one axis. The level says what is edited; t
 
 ### 3.1 Objective interface
 
-Fix a base model $M$, a task distribution $\mathcal D$, and a bounded return $R$. For an editable state $s$, one execution with run randomness or environment seed $\xi$ returns
+Fix a base model $`M`$, a task distribution $`\mathcal D`$, and a bounded return $`R`$. For an editable state $`s`$, one execution with run randomness or environment seed $`\xi`$ returns
 
-~~~math
+```math
 Y(s,z;\xi)=R\!\left(H_s(M,z;\xi)\right),\qquad
 f_M(s)=\mathbb E_{z,\xi}[Y(s,z;\xi)].
-~~~
+```
 
-For text, programs, and file trees, $\nabla_s f_M(s)$ is not defined unless the representation is embedded in an explicit continuous parameterization. HarnessOpt therefore treats execution as an objective interface: information about $f_M$ is obtained by deploying a state and observing its result.
+For text, programs, and file trees, $`\nabla_s f_M(s)`$ is not defined unless the representation is embedded in an explicit continuous parameterization. HarnessOpt therefore treats execution as an objective interface: information about $`f_M`$ is obtained by deploying a state and observing its result.
 
 The proposer may receive a richer observation than a scalar return:
 
-~~~math
+```math
 \mathcal O(s,z;\xi)=\bigl(Y(s,z;\xi),\Psi(s,z;\xi)\bigr),
-~~~
+```
 
-where $\Psi$ contains traces, errors, tool calls, and verifier feedback. $\Psi$ changes the information available to $P_\phi$, but it is not a numerical derivative, an unbiased gradient estimator, or confirmation evidence. A trace also does not identify the causal contribution of an edit unless the state comparison and execution conditions are controlled.
+where $`\Psi`$ contains traces, errors, tool calls, and verifier feedback. $`\Psi`$ changes the information available to $`P_\phi`$, but it is not a numerical derivative, an unbiased gradient estimator, or confirmation evidence. A trace also does not identify the causal contribution of an edit unless the state comparison and execution conditions are controlled.
 
 Three distinctions are required:
 
@@ -153,23 +153,23 @@ Three distinctions are required:
 
 The three axes classify different parts of the proposal process. Evidence construction describes which executions are queried and how their observations are aggregated. Search geometry describes the representation-level region in which an edit may be formed. Query allocation describes how history, surrogates, or retained candidates determine the next evaluations. They are separable analytically but may be coupled in an implementation.
 
-To make the correspondence checkable, let $\mathcal O_i(s)=\mathcal O(s,z_i;\xi_i)$, $Y_i(s)=Y(s,z_i;\xi_i)$, and $\Psi_i(s)=\Psi(s,z_i;\xi_i)$, with $\widehat f_D(s)=m^{-1}\sum_{i=1}^{m}Y_i(s)$. Let $s\oplus\delta$ denote applying a legal edit $\delta$ to state $s$, let $\mathcal H_t$ be the history of states, observations, and scores before round $t$, and let $b$ be a component block declared before outcome observation. If the system provides a behavior descriptor, write it as $d_{\mathrm{beh}}(s,s')$, and write the candidate-lineage identifier as $\lambda(s)$. In classical ZO formulas, $u$ is a random numerical direction and $d_x$ is the dimension of the continuous parameterization; Harness-native states usually have neither object.
+To make the correspondence checkable, let $`\mathcal O_i(s)=\mathcal O(s,z_i;\xi_i)`$, $`Y_i(s)=Y(s,z_i;\xi_i)`$, and $`\Psi_i(s)=\Psi(s,z_i;\xi_i)`$, with $`\widehat f_D(s)=m^{-1}\sum_{i=1}^{m}Y_i(s)`$. Let $`s\oplus\delta`$ denote applying a legal edit $`\delta`$ to state $`s`$, let $`\mathcal H_t`$ be the history of states, observations, and scores before round $`t`$, and let $`b`$ be a component block declared before outcome observation. If the system provides a behavior descriptor, write it as $`d_{\mathrm{beh}}(s,s')`$, and write the candidate-lineage identifier as $`\lambda(s)`$. In classical ZO formulas, $`u`$ is a random numerical direction and $`d_x`$ is the dimension of the continuous parameterization; Harness-native states usually have neither object.
 
 | Design axis | Mechanism family | Harness-native form (formal) | Correspondence to derivative-free optimization (formal) | Representative work |
 |---|---|---|---|---|
-| **Evidence construction** | single-state semantic proposal | $\delta_t=P_\phi(s_t,\{\mathcal O_i(s_t)\}_{i=1}^{m})$, with candidate $s_t\oplus\delta_t$; the edited state is not queried before proposal. | Interface correspondence only. Classical one-point ZO requires $\widehat g_{1p}=(d_x/\mu)Y(x+\mu u)u$ (or a baseline-corrected variant); this family has no numerical direction $u$ or step $\mu$, so it is not that estimator. | Reflexion, Voyager, ProTeGi, TextGrad |
-|  | batch evidence aggregation | $\overline{\Psi}_D(s)=\operatorname{Agg}(\{\Psi_i(s)\}_{i=1}^{m})$, with returns aggregated by $\widehat f_D(s)$. | Repeated noisy queries at one state: $\widehat f_m(s)=m^{-1}\sum_i y_i(s)$, with $\operatorname{Var}[\widehat f_m(s)]=\sigma^2/m$ under an i.i.d. assumption; tasks are not perturbation directions. | SkillOpt, SkillOpt-Lite, Trace2Skill, ExpeL, SkillForge |
-|  | paired state comparison | $\widehat\Delta_D(s,\delta)=m^{-1}\sum_i[Y(s\oplus\delta,z_i;\xi_i^+)-Y(s,z_i;\xi_i^-)]$. | The comparison skeleton of the two-point ZO estimator $\widehat g_{2p}=(d_x/(2\mu))[f(x+\mu u)-f(x-\mu u)]u$; without a continuous parameterization and constructible positive/negative perturbations, it is not a central difference. | SkillCAT, selective Trace2Skill paths |
-| **Search geometry** | block-local edit | $s'=s^{(b\leftarrow\delta_b)}$, where block $b$ is fixed before outcome observation. | Structurally corresponds to a block-coordinate update $x'=x+U_b d_b$; coordinates must be predefined and block separability is not assumed. | SkillAdaptor, AgentSquare, DemoEvolve, AlphaEvolve |
-|  | bounded local search | $s'\in\mathcal N_L(s)\cap\mathcal S_{\mathrm{feas}}$, for example $\mathcal N_L(s)=\{s':d_{\mathrm{syn}}(s,s')\le L\}$. | Resembles local direct search or a trust-region constraint $\|d\|\le\Delta_k$; if $d_{\mathrm{syn}}$ is not behavioral and no radius is updated, the correct label is bounded edit. | SkillOpt, SkillOpt-Lite, SkillForge, Self-Harness |
-| **Query allocation** | history or surrogate allocation | $a_{t+1}\in\arg\max_{a\in\mathcal A}\alpha_t(a\mid\mathcal H_t)$, where $a$ may denote a candidate, task, or rollout budget. | Corresponds to acquisition $x_{t+1}\in\arg\max_x\alpha_t(x\mid\mathcal H_t)$ or an explicit bandit allocation; without $\alpha_t$, it is only a history heuristic. | ProTeGi, MIPROv2, AgentSquare, AdaEvolve |
-|  | population or archive search | $A_{t+1}=\operatorname{Select}_K(A_t\cup\operatorname{Offspring}(A_t))$, with selection based on $(\widehat f,d_{\mathrm{beh}},\lambda)$ when available. | Corresponds to an evolutionary update $P_{t+1}=\operatorname{Select}(P_t\cup\operatorname{Mutate}(P_t))$ or a Pareto archive; retention does not imply convergence or independent confirmation. | GEPA, Promptbreeder, DGM, AlphaEvolve, Meta-Harness |
+| **Evidence construction** | single-state semantic proposal | $`\delta_t=P_\phi(s_t,\{\mathcal O_i(s_t)\}_{i=1}^{m})`$, with candidate $`s_t\oplus\delta_t`$; the edited state is not queried before proposal. | Interface correspondence only. Classical one-point ZO requires $`\widehat g_{1p}=(d_x/\mu)Y(x+\mu u)u`$ (or a baseline-corrected variant); this family has no numerical direction $`u`$ or step $`\mu`$, so it is not that estimator. | Reflexion, Voyager, ProTeGi, TextGrad |
+|  | batch evidence aggregation | $`\overline{\Psi}_D(s)=\mathrm{Agg}(\{\Psi_i(s)\}_{i=1}^{m})`$, with returns aggregated by $`\widehat f_D(s)`$. | Repeated noisy queries at one state: $`\widehat f_m(s)=m^{-1}\sum_i y_i(s)`$, with $`\mathrm{Var}[\widehat f_m(s)]=\sigma^2/m`$ under an i.i.d. assumption; tasks are not perturbation directions. | SkillOpt, SkillOpt-Lite, Trace2Skill, ExpeL, SkillForge |
+|  | paired state comparison | $`\widehat\Delta_D(s,\delta)=m^{-1}\sum_i[Y(s\oplus\delta,z_i;\xi_i^+)-Y(s,z_i;\xi_i^-)]`$. | The comparison skeleton of the two-point ZO estimator $`\widehat g_{2p}=(d_x/(2\mu))[f(x+\mu u)-f(x-\mu u)]u`$; without a continuous parameterization and constructible positive/negative perturbations, it is not a central difference. | SkillCAT, selective Trace2Skill paths |
+| **Search geometry** | block-local edit | $`s'=s^{(b\leftarrow\delta_b)}`$, where block $`b`$ is fixed before outcome observation. | Structurally corresponds to a block-coordinate update $`x'=x+U_b d_b`$; coordinates must be predefined and block separability is not assumed. | SkillAdaptor, AgentSquare, DemoEvolve, AlphaEvolve |
+|  | bounded local search | $`s'\in\mathcal N_L(s)\cap\mathcal S_{\mathrm{feas}}`$, for example $`\mathcal N_L(s)=\{s':d_{\mathrm{syn}}(s,s')\le L\}`$. | Resembles local direct search or a trust-region constraint $`d^\top d\le\Delta_k^2`$; if $`d_{\mathrm{syn}}`$ is not behavioral and no radius is updated, the correct label is bounded edit. | SkillOpt, SkillOpt-Lite, SkillForge, Self-Harness |
+| **Query allocation** | history or surrogate allocation | $`a_{t+1}\in\arg\max_{a\in\mathcal A}\alpha_t(a\mid\mathcal H_t)`$, where $`a`$ may denote a candidate, task, or rollout budget. | Corresponds to acquisition $`x_{t+1}\in\arg\max_x\alpha_t(x\mid\mathcal H_t)`$ or an explicit bandit allocation; without $`\alpha_t`$, it is only a history heuristic. | ProTeGi, MIPROv2, AgentSquare, AdaEvolve |
+|  | population or archive search | $`A_{t+1}=\mathrm{Select}_K(A_t\cup\mathrm{Offspring}(A_t))`$, with selection based on $`(\widehat f,d_{\mathrm{beh}},\lambda)`$ when available. | Corresponds to an evolutionary update $`P_{t+1}=\mathrm{Select}(P_t\cup\mathrm{Mutate}(P_t))`$ or a Pareto archive; retention does not imply convergence or independent confirmation. | GEPA, Promptbreeder, DGM, AlphaEvolve, Meta-Harness |
 
 The formulas are role-level formalizations; they do not make the discrete edit space continuous. An interface correspondence only states that objective information is obtained through execution. A structural correspondence additionally requires a representation-level edit unit, neighborhood, or retention rule. A strict correspondence requires the numerical parameterization, update rule, distance structure, and sampling assumptions of the classical operator. A classical term such as central difference, trust region, or bandit allocation is justified only when those conditions hold. No label alone implies a convergence rate, variance reduction, behavioral radius, or independent confirmation set.
 
 ### 3.3 Structure and cost
 
-The editable surface supplies the structure available to a search operator. Let $\mathcal S_{\mathrm{feas}}\subseteq\mathcal S_{\mathrm{edit}}$ denote states satisfying compile, type, interface, and write-path contracts. A static checker can test membership in this constructive subset, but it does not estimate $f_M$ or establish semantic correctness.
+The editable surface supplies the structure available to a search operator. Let $`\mathcal S_{\mathrm{feas}}\subseteq\mathcal S_{\mathrm{edit}}`$ denote states satisfying compile, type, interface, and write-path contracts. A static checker can test membership in this constructive subset, but it does not estimate $`f_M`$ or establish semantic correctness.
 
 Component boundaries, allowlists, feature toggles, version snapshots, and deterministic replay can make local edits and paired comparisons executable. They do not imply that code is superior to text. Code supplies stronger structural constraints but also introduces coupling, side effects, and a larger rollback surface. A syntactic edit budget limits description space; it does not, without an additional behavioral metric, limit the change in execution behavior.
 
@@ -177,9 +177,9 @@ Local search is meaningful only when the editable components and the initial sta
 
 Harness queries have unequal cost. A useful accounting is
 
-~~~math
+```math
 C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\mathrm{smoke}}c_{\mathrm{smoke}}+n_{\mathrm{task}}c_{\mathrm{task}}.
-~~~
+```
 
 Static checks and smoke tests filter candidates before expensive task rollouts; they do not replace task-level confirmation. Search evidence and confirmation evidence must be counted separately. Paired evaluation is justified only when task, seed, and environment alignment produces sufficient covariance reduction to offset the additional execution cost; the paired label alone does not establish that reduction.
 
@@ -191,9 +191,9 @@ See [docs/zo-operator-map.md](docs/zo-operator-map.md) for the operator requirem
 
 ### 4.1 Two different statistical questions
 
-Let $\mathcal A$ map a proposal sample $D_n$ to a persistent state. For a fresh evaluation task $x$, let $D_n^{(i\leftarrow x_i')}$ replace one proposal example with an independent draw. Proposal stability is represented by the expected replace-one sensitivity
+Let $`\mathcal A`$ map a proposal sample $`D_n`$ to a persistent state. For a fresh evaluation task $`x`$, let $`D_n^{(i\leftarrow x_i')}`$ replace one proposal example with an independent draw. Proposal stability is represented by the expected replace-one sensitivity
 
-~~~math
+```math
 \beta_{\mathrm{avg}}
 =
 \mathbb E\!\left[
@@ -203,20 +203,20 @@ Let $\mathcal A$ map a proposal sample $D_n$ to a persistent state. For a fresh 
 \ell(\mathcal A(D_n^{(i\leftarrow x_i')});x)
 \right|
 \right].
-~~~
+```
 
-**B1, proposal stability**, asks whether this quantity is small. Batch evidence, cross-task aggregation, and bounded edits are mechanisms that may reduce sensitivity to one proposal example. The checked systems do not systematically measure $\beta_{\mathrm{avg}}$; it is therefore a design hypothesis, not an empirical guarantee. Expected on-average stability alone also does not provide a high-probability bound.
+**B1, proposal stability**, asks whether this quantity is small. Batch evidence, cross-task aggregation, and bounded edits are mechanisms that may reduce sensitivity to one proposal example. The checked systems do not systematically measure $`\beta_{\mathrm{avg}}`$; it is therefore a design hypothesis, not an empirical guarantee. Expected on-average stability alone also does not provide a high-probability bound.
 
-**B2, fixed-candidate confirmation**, asks whether a candidate fixed without using a confirmation sample $V_m$ performs well on fresh tasks. If $V_m\sim\mathcal D^m$, the loss is bounded in $[0,1]$, and $V_m$ does not influence candidate generation, selection, or stopping, Hoeffding's inequality gives
+**B2, fixed-candidate confirmation**, asks whether a candidate fixed without using a confirmation sample $`V_m`$ performs well on fresh tasks. If $`V_m\sim\mathcal D^m`$, the loss is bounded in $`[0,1]`$, and $`V_m`$ does not influence candidate generation, selection, or stopping, Hoeffding's inequality gives
 
-~~~math
+```math
 \epsilon(\widetilde s)
 \le
 \widehat\epsilon_{V_m}(\widetilde s)
 +\sqrt{\frac{\ln(1/\delta)}{2m}}
-~~~
+```
 
-with probability at least $1-\delta$. If a task is run with multiple seeds, the seeds are repeated observations conditional on that task; $m$ counts independent tasks after the stated task-level aggregation. Reusing the same set adaptively does not restore independence by renaming it validation or held-out.
+with probability at least $`1-\delta`$. If a task is run with multiple seeds, the seeds are repeated observations conditional on that task; $`m`$ counts independent tasks after the stated task-level aggregation. Reusing the same set adaptively does not restore independence by renaming it validation or held-out.
 
 B1 and B2 are not substitutes. A stable proposer can overfit a reused validation set; a genuinely fresh confirmation set can evaluate a fixed candidate without proving that the proposer is stable.
 
@@ -240,7 +240,7 @@ An untouched final test used only for reporting is not a promotion gate. Human r
 
 ### 4.3 Three conditions outside B2
 
-Write $\epsilon(s)=\sum_{k=1}^{K}p_k\epsilon_k(s)$ for a distribution partitioned into task clusters. A degradation $\Delta\epsilon_k$ in a cluster of mass $p_k$ changes the aggregate risk by only $p_k\Delta\epsilon_k$. It can remain below a confirmation slack $\eta$ even when the cluster-level loss is materially worse. Cluster-level non-regression therefore requires stratified sampling and reporting.
+Write $`\epsilon(s)=\sum_{k=1}^{K}p_k\epsilon_k(s)`$ for a distribution partitioned into task clusters. A degradation $`\Delta\epsilon_k`$ in a cluster of mass $`p_k`$ changes the aggregate risk by only $`p_k\Delta\epsilon_k`$. It can remain below a confirmation slack $`\eta`$ even when the cluster-level loss is materially worse. Cluster-level non-regression therefore requires stratified sampling and reporting.
 
 1. **Criterion coverage.** The loss must include the target capability, important task clusters, safety, and policy dimensions. An aggregate score can improve while a low-mass capability deteriorates.
 2. **Evaluation boundary.** Tasks, evaluators, model routing, logging, permissions, and protected paths must remain outside the editable surface or be enforced at run time.
@@ -256,7 +256,7 @@ The correct unit of evaluation is an **evolution trajectory**, not only the fina
 |---|---|
 | **Fixed boundary** | model, evaluator, tools, environment, permissions, editable surface |
 | **Data roles** | proposal, selection, confirmation, regression, and final-test sets; sample counts; reuse; proposer visibility |
-| **State history** | $s_0$, every accepted $s_t$, rejected candidates, final $s_T$, and old-task/OOD/fresh-task curves |
+| **State history** | $`s_0`$, every accepted $`s_t`$, rejected candidates, final $`s_T`$, and old-task/OOD/fresh-task curves |
 | **Runtime cost** | model tokens, tool calls, wall-clock, task rollouts, memory growth, human interventions, rollback cost |
 | **Audit artifacts** | diffs, traces, seeds, evaluator configuration, replay command, safety checks, and rejected branches |
 
