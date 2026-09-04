@@ -159,6 +159,8 @@ For the L3/L4 boundary, classify the primary level by the persistent write targe
 
 This section makes one extension to SkillOpt-Lite: replace the single skill file with a persistent harness state. The objective query, candidate proposal, and confirmation roles remain the same. Here `ZO interface` describes how objective information is obtained through execution; it does not claim a numerical gradient estimator or a convergence guarantee.
 
+A paper may appear in more than one row because the rows record different roles rather than disjoint paper sets. SkillOpt and SkillOpt-Lite recur under L1, bounded edits, and separated confirmation for this reason; those appearances must not be added as separate systems.
+
 ### 5.1 Objective interface and candidate form
 
 Fix a base model $M$, a task distribution $\mathcal D$, and a bounded return $R$. For a state $s$, one execution returns
@@ -182,7 +184,7 @@ The table follows the direct mechanism mapping used by SkillOpt-Lite. Harness-na
 
 | ZO mechanism family | Harness-native form | Classical ZO reference | Correspondence and boundary | Representative work |
 |---|---|---|---|---|
-| ZO oracle | $Y(s,z;\xi)$, $f_M(s)=\mathbb E[Y]$ | Black-box objective $f(x)$ | Execution supplies objective information; interface correspondence | Systems in the catalogue |
+| ZO oracle | $Y(s,z;\xi)$, $f_M(s)=\mathbb E[Y]$ | Black-box objective $f(x)$ | Execution supplies objective information; interface correspondence | All included rows with runtime task evaluation |
 | 1-point / single-trace proposal | $\delta_t=P_\phi(s_t,\mathcal O(s_t,z_t;\xi_t))$ | $\widehat g_{1p}=\frac{d_x}{\mu}Y(x+\mu u)u$ | No numerical direction $u$ or step $\mu$; not a one-point estimator | Reflexion, Voyager, ProTeGi, TextGrad |
 | multi-point / mini-batch | $\widehat f_D(s)=m^{-1}\sum_iY(s,z_i;\xi_i)$, with $\Psi_i$ aggregated | $\widehat g_{\mathrm{mb}}=b^{-1}\sum_i[Y(x+\mu u_i)-Y(x)]u_i$ | Tasks or seeds are repeated samples at one state, not perturbation directions | SkillOpt, SkillOpt-Lite, Trace2Skill, ExpeL, SkillForge |
 | central difference / paired comparison | $\widehat\Delta_D=m^{-1}\sum_i[Y(s^+,z_i;\xi_i^+)-Y(s^-,z_i;\xi_i^-)]$ | $\frac{f(x+\mu u)-f(x-\mu u)}{2\mu}u$ | Parent/child difference is only a comparison skeleton; central difference requires reversible symmetric perturbations | SkillCAT, selective Trace2Skill paths |
@@ -309,9 +311,10 @@ The catalogue is anchored to four literature gaps that follow the update loop. T
 
 | Mainline question | Representative anchors | What to extract from the primary source |
 |---|---|---|
-| **Direct harness evolution** | [Code as Agent Harness](https://arxiv.org/abs/2605.18747), [AutoHarness](https://arxiv.org/abs/2603.03329), [SkillCAT](https://arxiv.org/abs/2606.13317), [SkillAdaptor](https://arxiv.org/abs/2606.01311), [SkillForge](https://arxiv.org/abs/2604.08618), [MCE](https://arxiv.org/abs/2601.21557), [Continual Harness](https://arxiv.org/abs/2605.09998), [Harness Updating Is Not Harness Benefit](https://arxiv.org/abs/2605.30621) | persistent write target, reload boundary, candidate-level gate, and update-versus-benefit measurement |
+| **Direct harness evolution** | [Code as Agent Harness](https://arxiv.org/abs/2605.18747), [AutoHarness](https://arxiv.org/abs/2603.03329), [SkillCAT](https://arxiv.org/abs/2606.13317), [SkillAdaptor](https://arxiv.org/abs/2606.01311), [SkillForge](https://arxiv.org/abs/2604.08618), [MCE](https://arxiv.org/abs/2601.21557), [Continual Harness](https://arxiv.org/abs/2605.09998), [AutoAgent](https://arxiv.org/abs/2603.09716), [Evo-Memory](https://arxiv.org/abs/2511.20857), [Harness Updating Is Not Harness Benefit](https://arxiv.org/abs/2605.30621) | persistent write target, reload boundary, candidate-level gate, and update-versus-benefit measurement |
 | **Candidate proposal and search** | [AdaEvolve](https://arxiv.org/abs/2602.20133), [ShinkaEvolve](https://arxiv.org/abs/2509.19349), [ThetaEvolve](https://arxiv.org/abs/2511.23473), [Promptbreeder](https://arxiv.org/abs/2309.16797), [GEPA](https://arxiv.org/abs/2507.19457), [MIPROv2](https://arxiv.org/abs/2406.11695), [TextGrad](https://arxiv.org/abs/2406.07496), [DGM](https://arxiv.org/abs/2505.22954) | observed evidence, edit geometry, candidate retention, query allocation, and whether a label is interface, structural, or strict |
 | **Confirmation and trajectory evaluation** | [SkillOpt](https://arxiv.org/abs/2605.23904), [SkillOpt-Lite](https://arxiv.org/abs/2607.03451), [Self-Harness](https://arxiv.org/abs/2606.09498), [AI Agents That Matter](https://arxiv.org/abs/2407.01502), [HAL](https://arxiv.org/abs/2510.11977), [RE-Bench](https://arxiv.org/abs/2411.15114), [MLE-bench](https://arxiv.org/abs/2410.07095), [PaperBench](https://arxiv.org/abs/2504.01848) | split and reuse, blocking point, cost, long-horizon retention, reproducibility, and evaluator integrity |
+| **Harness architecture and evaluation substrates** | [SWE-agent](https://arxiv.org/abs/2405.15793), [OpenHands](https://arxiv.org/abs/2407.16741), [OpenHands SDK](https://arxiv.org/abs/2511.03690), [BrowserGym ecosystem](https://arxiv.org/abs/2412.05467), [ToolSandbox](https://arxiv.org/abs/2408.04682), [$\tau$-bench](https://arxiv.org/abs/2406.12045), [AgentDojo](https://arxiv.org/abs/2406.13352), [WorkArena](https://arxiv.org/abs/2403.07718) | interface, tool/state boundary, evaluator design, and reproducibility; none is counted as a persistent update without a separate audit |
 | **Risk and governance** | [Misevolution](https://arxiv.org/abs/2509.26354), [Defining and Characterizing Reward Hacking](https://arxiv.org/abs/2209.13085), [Scaling Laws for Reward Model Overoptimization](https://arxiv.org/abs/2210.10760), [Sycophancy to Subterfuge](https://arxiv.org/abs/2406.10162) | evaluator manipulation, reward hacking, diversity collapse, permission boundaries, rollback, and human authorization |
 
 ## 8. Future direction: governable evolution

@@ -159,6 +159,8 @@ L3/L4 的边界按实际持久写入对象判断，不按 proposer 的角色判�
 
 本节只把 SkillOpt-Lite 的 ZO 对照扩展到 HarnessOpt：把可编辑状态从单个 skill 文件扩展为持久化 harness 状态。ZO 在这里描述目标信息如何通过运行获得，不表示现有方法使用了数值梯度或具有收敛保证。
 
+同一论文可以出现在多个行中，因为这些行记录的是不同字段，不是互斥的论文集合。SkillOpt 和 SkillOpt-Lite 同时出现在 L1、bounded edit 和 separated confirmation 位置，不能把这些出现次数相加为系统数量。
+
 ### 5.1 目标接口与候选形式
 
 固定基座模型 $M$、任务分布 $\mathcal D$ 和回报函数 $R$。对状态 $s$，一次运行返回
@@ -182,7 +184,7 @@ f_M(s)=\mathbb E_{z,\xi}[Y(s,z;\xi)].
 
 | ZO 机制家族 | Harness-native 形式 | 经典 ZO 参照 | 对应关系与边界 | 代表工作 |
 |---|---|---|---|---|
-| ZO oracle | $Y(s,z;\xi)$，$f_M(s)=\mathbb E[Y]$ | 黑盒目标 $f(x)$ | 运行提供目标信息；这是接口对应 | 清单中的系统 |
+| ZO oracle | $Y(s,z;\xi)$，$f_M(s)=\mathbb E[Y]$ | 黑盒目标 $f(x)$ | 运行提供目标信息；这是接口对应 | 所有通过任务运行获得回报的纳入条目 |
 | 1-point / single-trace proposal | $\delta_t=P_\phi(s_t,\mathcal O(s_t,z_t;\xi_t))$ | $\widehat g_{1p}=\frac{d_x}{\mu}Y(x+\mu u)u$ | 没有数值方向 $u$ 和步长 $\mu$，不是 one-point estimator | Reflexion、Voyager、ProTeGi、TextGrad |
 | multi-point / mini-batch | $\widehat f_D(s)=m^{-1}\sum_iY(s,z_i;\xi_i)$，并聚合 $\Psi_i$ | $\widehat g_{\mathrm{mb}}=b^{-1}\sum_i[Y(x+\mu u_i)-Y(x)]u_i$ | 任务或 seed 是同一点上的重复取样，不是扰动方向 | SkillOpt、SkillOpt-Lite、Trace2Skill、ExpeL、SkillForge |
 | central difference / paired comparison | $\widehat\Delta_D=m^{-1}\sum_i[Y(s^+,z_i;\xi_i^+)-Y(s^-,z_i;\xi_i^-)]$ | $\frac{f(x+\mu u)-f(x-\mu u)}{2\mu}u$ | parent/child 只是比较骨架；需可逆、对称的正负扰动才是 central difference | SkillCAT、Trace2Skill selective path |
@@ -310,9 +312,10 @@ B1 与 B2 不能互相替代。即使提议过程稳定，也可能在复用的�
 
 | 主线问题 | 代表性锚点 | 一手来源需要提取的字段 |
 |---|---|---|
-| **直接 Harness 演化** | [Code as Agent Harness](https://arxiv.org/abs/2605.18747)、[AutoHarness](https://arxiv.org/abs/2603.03329)、[SkillCAT](https://arxiv.org/abs/2606.13317)、[SkillAdaptor](https://arxiv.org/abs/2606.01311)、[SkillForge](https://arxiv.org/abs/2604.08618)、[MCE](https://arxiv.org/abs/2601.21557)、[Continual Harness](https://arxiv.org/abs/2605.09998)、[Harness Updating Is Not Harness Benefit](https://arxiv.org/abs/2605.30621) | 持久写入对象、reload 边界、候选级 gate，以及 update 与 benefit 的区分 |
+| **直接 Harness 演化** | [Code as Agent Harness](https://arxiv.org/abs/2605.18747)、[AutoHarness](https://arxiv.org/abs/2603.03329)、[SkillCAT](https://arxiv.org/abs/2606.13317)、[SkillAdaptor](https://arxiv.org/abs/2606.01311)、[SkillForge](https://arxiv.org/abs/2604.08618)、[MCE](https://arxiv.org/abs/2601.21557)、[Continual Harness](https://arxiv.org/abs/2605.09998)、[AutoAgent](https://arxiv.org/abs/2603.09716)、[Evo-Memory](https://arxiv.org/abs/2511.20857)、[Harness Updating Is Not Harness Benefit](https://arxiv.org/abs/2605.30621) | 持久写入对象、reload 边界、候选级 gate，以及 update 与 benefit 的区分 |
 | **候选提议与搜索** | [AdaEvolve](https://arxiv.org/abs/2602.20133)、[ShinkaEvolve](https://arxiv.org/abs/2509.19349)、[ThetaEvolve](https://arxiv.org/abs/2511.23473)、[Promptbreeder](https://arxiv.org/abs/2309.16797)、[GEPA](https://arxiv.org/abs/2507.19457)、[MIPROv2](https://arxiv.org/abs/2406.11695)、[TextGrad](https://arxiv.org/abs/2406.07496)、[DGM](https://arxiv.org/abs/2505.22954) | proposer 观察的证据、编辑几何、候选保留、查询分配，以及对应属于 interface、structural 还是 strict |
 | **确认与轨迹评测** | [SkillOpt](https://arxiv.org/abs/2605.23904)、[SkillOpt-Lite](https://arxiv.org/abs/2607.03451)、[Self-Harness](https://arxiv.org/abs/2606.09498)、[AI Agents That Matter](https://arxiv.org/abs/2407.01502)、[HAL](https://arxiv.org/abs/2510.11977)、[RE-Bench](https://arxiv.org/abs/2411.15114)、[MLE-bench](https://arxiv.org/abs/2410.07095)、[PaperBench](https://arxiv.org/abs/2504.01848) | split 与 reuse、阻断持久化的位置、成本、长期保留、可复现性和 evaluator integrity |
+| **Harness 架构与评测基座** | [SWE-agent](https://arxiv.org/abs/2405.15793)、[OpenHands](https://arxiv.org/abs/2407.16741)、[OpenHands SDK](https://arxiv.org/abs/2511.03690)、[BrowserGym ecosystem](https://arxiv.org/abs/2412.05467)、[ToolSandbox](https://arxiv.org/abs/2408.04682)、[$\tau$-bench](https://arxiv.org/abs/2406.12045)、[AgentDojo](https://arxiv.org/abs/2406.13352)、[WorkArena](https://arxiv.org/abs/2403.07718) | interface、tool/state 边界、评价器设计和可复现性；未完成独立审计前不计入持久更新协议数量 |
 | **风险与治理** | [Misevolution](https://arxiv.org/abs/2509.26354)、[Defining and Characterizing Reward Hacking](https://arxiv.org/abs/2209.13085)、[Scaling Laws for Reward Model Overoptimization](https://arxiv.org/abs/2210.10760)、[Sycophancy to Subterfuge](https://arxiv.org/abs/2406.10162) | evaluator 操纵、reward hacking、多样性坍缩、权限边界、rollback 和人类授权 |
 
 ## 8. 未来方向：可治理的演化

@@ -27,6 +27,23 @@ The labels in this repository are interpretations. A paper's use of “validatio
 | [MCE](https://arxiv.org/abs/2601.21557) | Co-evolves context-engineering skills (L4) and context artifacts (L1) in a bi-level loop | Full text checked; validation-based best-so-far selection is search-time selection |
 | [Continual Harness](https://arxiv.org/abs/2605.09998) | Online adaptation of prompts, sub-agents, skills, and memory during a continuing run | Boundary reading; cross-run persistence must be established before counting as a persistent update |
 | [Harness Updating Is Not Harness Benefit](https://arxiv.org/abs/2605.30621) | Separates the ability to produce useful updates from the ability to use them during task solving | Evaluation anchor; not a new transition protocol |
+| [AutoAgent](https://arxiv.org/abs/2603.09716) | Self-evolving cognition with contextual decision-making and elastic memory orchestration | Direct-evolution anchor; persistence scope and candidate-level blocking rule require source audit |
+| [Evo-Memory](https://arxiv.org/abs/2511.20857) | Streaming benchmark and framework for test-time self-evolving memory | Memory-evolution anchor; distinguish memory updates from a separated promotion gate |
+
+## Harness architecture and evaluation substrates
+
+These papers make the execution interface, tool boundary, or evaluation environment explicit. They broaden HarnessOpt coverage but do not enter the 33-row protocol counts unless a separate persistence audit is completed.
+
+| Work | Mainline role | Audit status |
+|---|---|---|
+| [SWE-agent](https://arxiv.org/abs/2405.15793) | Agent-computer interface design for repository navigation, editing, and tests | Architecture anchor; the paper evaluates a fixed interface rather than cross-round harness evolution |
+| [OpenHands](https://arxiv.org/abs/2407.16741) | Extensible coding-agent platform with tools, sandboxed execution, delegation, and benchmark integration | Architecture anchor; no candidate-level persistence protocol is inferred |
+| [OpenHands Software Agent SDK](https://arxiv.org/abs/2511.03690) | Composable agent, tool, memory, lifecycle, and local-to-remote execution interfaces | Production-harness anchor; persistence and promotion semantics require source audit |
+| [BrowserGym ecosystem](https://arxiv.org/abs/2412.05467) | Unified web-agent environment plus AgentLab for creation, testing, and analysis | Evaluation substrate; it standardizes environments, not harness updates |
+| [ToolSandbox](https://arxiv.org/abs/2408.04682) | Stateful tool execution, user simulation, and milestone-based evaluation | Stateful-evaluation anchor; no durable candidate write is implied |
+| [$\tau$-bench](https://arxiv.org/abs/2406.12045) | Multi-turn tool-agent-user interaction with database-state evaluation and pass$^k$ reliability | Reliability benchmark; no harness update protocol is implied |
+| [AgentDojo](https://arxiv.org/abs/2406.13352) | Dynamic tasks and attacks for prompt-injection defenses in tool-using agents | Security/evaluator-integrity anchor; not an evolution method |
+| [WorkArena](https://arxiv.org/abs/2403.07718) | Enterprise web-agent tasks implemented on a remote ServiceNow environment | Task substrate; use with a separate persistent-state protocol |
 
 ## Candidate proposal and search
 
