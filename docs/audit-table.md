@@ -1,6 +1,8 @@
 # Confirmation-Protocol Audit
 
-This table records the protocol fields needed to interpret a persistent harness update. It is a representative audit, deliberately smaller than the paper catalogue: uncertain details are marked `unverified` rather than inferred from a paper's level, benchmark, or use of the word “validation.” The 11/19/3 protocol counts cited in the README and manuscript refer to the broader audited set, not to the rows displayed on this page.
+This table records the protocol fields needed to interpret a persistent harness update, in more detail than the catalogue's single protocol column. Uncertain details are marked `unverified` rather than inferred from a paper's level, benchmark, or use of the word “validation.”
+
+Two things this page is **not**. It is not the counted set: the 11/19/3 protocol counts in the README come from a snapshot that is frozen while the companion survey is drafted, and several rows below sit outside that snapshot — they are marked `ᴮ` in the catalogue and are not counted, even though their fields are recorded here. It is also not a certification; see the note under the table.
 
 ## State-transition protocols
 
