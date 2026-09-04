@@ -2,7 +2,7 @@
 
 # Literature Map: Mainline Gaps
 
-This map expands the public reading list along the HarnessOpt update loop. It is a coverage and audit plan, not a claim that every listed paper implements a candidate-level gate. The protocol table remains the source for system-level classifications; use `unverified` when the primary source does not establish a field.
+This map expands the public reading list along the harness self-evolution update loop. It is a coverage and audit plan, not a claim that every listed paper implements a candidate-level gate. The protocol table remains the source for system-level classifications; use `unverified` when the primary source does not establish a field.
 
 ## How to use the map
 
@@ -32,7 +32,7 @@ The labels in this repository are interpretations. A paper's use of “validatio
 
 ## Harness architecture and evaluation substrates
 
-These papers make the execution interface, tool boundary, or evaluation environment explicit. They broaden HarnessOpt coverage but do not enter the 33-row protocol counts unless a separate persistence audit is completed.
+These papers make the execution interface, tool boundary, or evaluation environment explicit. They broaden harness self-evolution coverage but do not enter the 33-row protocol counts unless a separate persistence audit is completed.
 
 | Work | Mainline role | Audit status |
 |---|---|---|

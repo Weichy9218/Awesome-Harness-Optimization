@@ -11,13 +11,13 @@ Only terms used by the repository's analytical framework are included here. A la
 | **runtime state** $r$ | Per-run context, processes, caches, generated files, and other transient state; it is not persistent harness state unless explicitly versioned and reloaded. |
 | **protected evaluation boundary** | Task data, evaluator, model route, permissions, logging, and resource limits that are fixed outside $\mathcal S_{\mathrm{edit}}$ by default. A candidate that changes them is an evaluation-boundary change. |
 
-The harness is broader than a prompt file, while the editable state is narrower than the entire runtime. This distinction prevents a temporary artifact or a modified evaluator from being counted as an ordinary HarnessOpt update.
+The harness is broader than a prompt file, while the editable state is narrower than the entire runtime. This distinction prevents a temporary artifact or a modified evaluator from being counted as an ordinary harness self-evolution update.
 
 ## Core objects
 
 | Symbol | Meaning |
 |---|---|
-| $M$ | base model; fixed for the core HarnessOpt analysis |
+| $M$ | base model; fixed for the core harness self-evolution analysis |
 | $z\sim\mathcal D$ | a task sampled from the target distribution |
 | $s\in\mathcal S$ | versioned model-external harness state: prompts, memory, workflows, tools, code, or optimizer state |
 | $\mathcal S_{\mathrm{edit}}$ | the subset of state the update process may modify |

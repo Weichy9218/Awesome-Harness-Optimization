@@ -1,6 +1,6 @@
 # Zeroth-Order Operator Map
 
-This note defines how the repository uses ZO language to compare HarnessOpt proposal mechanisms. It is an interpretation layer, not a claim that text-editing systems estimate numerical gradients.
+This note defines how the repository uses ZO language to compare harness self-evolution proposal mechanisms. It is an interpretation layer, not a claim that text-editing systems estimate numerical gradients.
 
 ## 1. Objective interface and side information
 
@@ -29,7 +29,7 @@ The repository therefore separates:
 
 ## 2. Direct operator map
 
-The main comparison follows the mechanism families in SkillOpt-Lite. Extending from SkillOpt to HarnessOpt changes the editable domain from one skill file to an explicit harness state; it does not create a new ZO algorithm.
+The main comparison follows the mechanism families in SkillOpt-Lite. Extending from SkillOpt to harness self-evolution changes the editable domain from one skill file to an explicit harness state; it does not create a new ZO algorithm.
 
 | ZO mechanism family | Harness-native role | Classical requirement | Safe repository label |
 |---|---|---|---|
@@ -48,7 +48,7 @@ Two mechanisms are reported separately because they are not direct ZO operators 
 
 Rejected buffers and historical failures enter the control-variate row only when a correlated baseline and measured variance reduction are reported; otherwise they are negative evidence.
 
-The formulas in the README are role-level comparisons. They do not transfer a convergence rate, a variance-reduction result, a behavioral radius, or an independent confirmation set to a HarnessOpt system.
+The formulas in the README are role-level comparisons. They do not transfer a convergence rate, a variance-reduction result, a behavioral radius, or an independent confirmation set to a harness self-evolution system.
 ## 3. Surface structure determines implementability
 
 | Editable surface | Structure available before evaluation | Defensible operation |

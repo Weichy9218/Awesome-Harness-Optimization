@@ -1,4 +1,4 @@
-# Validation and Stability Notes for HarnessOpt
+# Validation and Stability Notes for Harness Self-Evolution
 
 This note states only the guarantees used by the main list. It separates three settings that are often conflated: expected generalization from algorithmic stability, one-time evaluation of a fixed candidate, and repeated selection on a reused validation set.
 
@@ -47,7 +47,7 @@ Let an update algorithm $\mathcal A$ map a training sample $D_N$ to a state $s_D
 
 Appropriate average-stability conditions support an **expectation-level** relationship between empirical and population risk, namely $\mathbb E[\epsilon(\mathcal A(D_N))-\widehat\epsilon_{D_N}(\mathcal A(D_N))]\le\beta_{\mathrm{avg}}$. No high-probability bound follows from this definition alone; that requires a stronger stability notion, such as uniform stability, or additional assumptions.
 
-For HarnessOpt, batching evidence, aggregating across tasks, or limiting edit scope may reduce sensitivity to one task. That is a mechanism hypothesis, not a measured stability coefficient unless the paper estimates the replace-one quantity.
+For harness self-evolution, batching evidence, aggregating across tasks, or limiting edit scope may reduce sensitivity to one task. That is a mechanism hypothesis, not a measured stability coefficient unless the paper estimates the replace-one quantity.
 
 Primary references: [Bousquet and Elisseeff, 2002](https://www.jmlr.org/papers/v2/bousquet02a.html); [Shalev-Shwartz et al., 2010](https://jmlr.org/papers/v11/shalev-shwartz10a.html).
 
@@ -149,7 +149,7 @@ Rotation is cheaper exactly when $\ln(T/\delta)<\ln|\mathcal U_L|$, that is, whe
 
 Two caveats. First, the comparison assumes fresh tasks and reused tasks cost the same; when fresh tasks are strictly more expensive to obtain, the relevant comparison is between their prices, and this note does not fix those. Second, the $\sqrt{T}$-versus-$\ln T$ contrast concerns the *slack at fixed $m$*, which is the quantity that determines whether a bound is vacuous — not the total task budget. Both readings are correct about different quantities, and conflating them is a common error: rotation's advantage is that it keeps the slack non-vacuous as $T$ grows, not that it reduces total sampling cost by an order of magnitude.
 
-For more general adaptive reuse, mechanisms such as [reusable holdout](https://www.science.org/doi/10.1126/science.aaa9375) or [adaptive data analysis](https://arxiv.org/abs/1411.2664) may be relevant, but this repository does not claim that existing HarnessOpt systems satisfy their mechanisms.
+For more general adaptive reuse, mechanisms such as [reusable holdout](https://www.science.org/doi/10.1126/science.aaa9375) or [adaptive data analysis](https://arxiv.org/abs/1411.2664) may be relevant, but this repository does not claim that existing harness self-evolution systems satisfy their mechanisms.
 
 ### 4.3 Aggregate risk hides cluster-level degradation
 
