@@ -21,9 +21,10 @@
 4. [Editable surface: L0–L5](#4-editable-surface-l0l5)
    - [4.1 Representative entries](#41-representative-entries)
 5. [Candidate proposal: a ZO interface](#5-candidate-proposal-a-zo-interface)
-   - [5.1 Objective interface](#51-objective-interface)
-   - [5.2 Three search axes](#52-three-search-axes)
-   - [5.3 Structure and cost](#53-structure-and-cost)
+   - [5.1 Objective interface and candidate form](#51-objective-interface-and-candidate-form)
+   - [5.2 ZO operators and HarnessOpt mechanisms](#52-zo-operators-and-harnessopt-mechanisms)
+   - [5.3 Three design axes](#53-three-design-axes)
+   - [5.4 From SkillOpt-Lite to HarnessOpt](#54-from-skillopt-lite-to-harnessopt)
 6. [Confirmation and persistence: transition protocols](#6-confirmation-and-persistence-transition-protocols)
    - [6.1 Two different statistical questions](#61-two-different-statistical-questions)
    - [6.2 Three state-transition protocols](#62-three-state-transition-protocols)
@@ -115,7 +116,7 @@ The catalogue records three complementary fields. They describe different parts 
 | **Proposal mechanism** | What does the proposer observe, and what structure constrains candidate formation? | Evidence construction, search geometry, and query allocation; record a concrete label such as `Proposal: batch evidence + localized edit` |
 | **Confirmation protocol** | What executable rule decides whether a candidate becomes the next state, and what data can affect that rule? | `write-through`, `search-time selection`, or `separated confirmation`, together with `open`, `search-set`, `held-out`, `fresh test`, reuse, and boundary status |
 
-Use this table as the catalogue schema. It is the minimum record for comparing systems and keeps a sophisticated proposer separate from an independent promotion gate.
+Use this table as the catalogue schema: it is the minimum record for comparing systems, and it keeps candidate generation separate from an independent promotion gate.
 
 `G` is the operational state-transition rule. `PAC-style confirmation` is a conditional statistical interpretation of `separated confirmation`. It requires a candidate fixed before evaluation, confirmation data independent of proposal and selection, bounded loss, and a protected evaluation boundary. A `write-through` or `search-time selection` rule can be a gate in the operational sense, but it does not satisfy that holdout condition. Human review, sandboxing, and rollback are governance controls, not statistical independence.
 
@@ -156,73 +157,62 @@ For the L3/L4 boundary, classify the primary level by the persistent write targe
 
 ## 5. Candidate proposal: a ZO interface
 
-Here `ZO interface` names a role-level correspondence: execution supplies objective information to the proposer. It does not claim a classical ZO estimator or a convergence guarantee.
+This section makes one extension to SkillOpt-Lite: replace the single skill file with a persistent harness state. The objective query, candidate proposal, and confirmation roles remain the same. Here `ZO interface` describes how objective information is obtained through execution; it does not claim a numerical gradient estimator or a convergence guarantee.
 
-### 5.1 Objective interface
+### 5.1 Objective interface and candidate form
 
-Fix a base model $M$, a task distribution $\mathcal D$, and a bounded return $R$. For an editable state $s$, one execution with run randomness or environment seed $\xi$ returns
+Fix a base model $M$, a task distribution $\mathcal D$, and a bounded return $R$. For a state $s$, one execution returns
 
 ```math
 Y(s,z;\xi)=R\!\left(H_s(M,z;\xi)\right),\qquad
 f_M(s)=\mathbb E_{z,\xi}[Y(s,z;\xi)].
 ```
 
-For text, programs, and file trees, $\nabla_s f_M(s)$ is not defined unless the representation is embedded in an explicit continuous parameterization. HarnessOpt therefore treats execution as an objective interface: information about $f_M$ is obtained by deploying a state and observing its result.
-
-The proposer may receive a richer observation than a scalar return:
+The runtime may also return traces, errors, and verifier feedback:
 
 ```math
-\mathcal O(s,z;\xi)=\bigl(Y(s,z;\xi),\Psi(s,z;\xi)\bigr),
+\mathcal O(s,z;\xi)=\bigl(Y(s,z;\xi),\Psi(s,z;\xi)\bigr).
 ```
 
-where $\Psi$ contains traces, errors, tool calls, and verifier feedback. $\Psi$ changes the information available to $P_\phi$, but it is not a numerical derivative, an unbiased gradient estimator, or confirmation evidence. A trace also does not identify the causal contribution of an edit unless the state comparison and execution conditions are controlled.
+For discrete text, programs, and file trees, $\nabla_s f_M(s)$ is usually undefined. Let $\mathsf E(s,\delta)$ denote a legal edit. The minimal proposal loop is $\delta_t=P_\phi(s_t,\mathcal O_t)$ and $\widetilde s_{t+1}=\mathsf E(s_t,\delta_t)$; whether the candidate is written back belongs to Section 6.
 
-Three distinctions are required:
+### 5.2 ZO operators and HarnessOpt mechanisms
 
-- semantic feedback is proposal-side information, not a gradient estimator;
-- compile, type, schema, and interface checks establish feasibility, not task-level performance;
-- a paired parent/child score is an empirical state difference, not a central finite difference unless the required perturbation structure is explicitly constructed.
+The table follows the direct mechanism mapping used by SkillOpt-Lite. Harness-native formulas describe a discrete edit playing the corresponding role; the classical name is retained only when its conditions are met.
 
-### 5.2 Three search axes
+| ZO mechanism family | Harness-native form | Classical ZO reference | Correspondence and boundary | Representative work |
+|---|---|---|---|---|
+| ZO oracle | $Y(s,z;\xi)$, $f_M(s)=\mathbb E[Y]$ | Black-box objective $f(x)$ | Execution supplies objective information; interface correspondence | Systems in the catalogue |
+| 1-point / single-trace proposal | $\delta_t=P_\phi(s_t,\mathcal O(s_t,z_t;\xi_t))$ | $\widehat g_{1p}=\frac{d_x}{\mu}Y(x+\mu u)u$ | No numerical direction $u$ or step $\mu$; not a one-point estimator | Reflexion, Voyager, ProTeGi, TextGrad |
+| multi-point / mini-batch | $\widehat f_D(s)=m^{-1}\sum_iY(s,z_i;\xi_i)$, with $\Psi_i$ aggregated | $\widehat g_{\mathrm{mb}}=b^{-1}\sum_i[Y(x+\mu u_i)-Y(x)]u_i$ | Tasks or seeds are repeated samples at one state, not perturbation directions | SkillOpt, SkillOpt-Lite, Trace2Skill, ExpeL, SkillForge |
+| central difference / paired comparison | $\widehat\Delta_D=m^{-1}\sum_i[Y(s^+,z_i;\xi_i^+)-Y(s^-,z_i;\xi_i^-)]$ | $\frac{f(x+\mu u)-f(x-\mu u)}{2\mu}u$ | Parent/child difference is only a comparison skeleton; central difference requires reversible symmetric perturbations | SkillCAT, selective Trace2Skill paths |
+| coordinate descent / block-local edit | $s'=s^{(b\leftarrow\delta_b)}$, with block $b$ fixed before observation | $\frac{f(x+\mu e_i)-f(x)}{\mu}e_i$ | One predefined coordinate or component is changed; usually structural correspondence | SkillAdaptor, AgentSquare, DemoEvolve, AlphaEvolve |
+| trust region / bounded edit | $\widetilde s\in\mathcal N_L(s)\cap\mathcal S_{\mathrm{feas}}$ | $x_{k+1}\in B(x_k,\Delta_k)$ | A diff, token, or path cap is bounded edit; trust region also needs a behavioral distance, radius update, and acceptance rule | SkillOpt, SkillOpt-Lite, SkillForge, Self-Harness |
+| control variate / historical baseline | $\widehat f^{\mathrm{cv}}_t=\widehat f_t-c_t+\mathbb E[c_t]$ (only with a named baseline) | $\widehat g^{\mathrm{cv}}_t=\widehat g_t-c_t+\mathbb E[c_t]$ | A rejected buffer is not automatically a control variate; require correlation and measured variance reduction | SkillOpt (conditional; operator evidence unverified) |
 
-The three axes classify different parts of the proposal process. Evidence construction describes which executions are queried and how their observations are aggregated. Search geometry describes the representation-level region in which an edit may be formed. Query allocation describes how history, surrogates, or retained candidates determine the next evaluations. They are separable analytically but may be coupled in an implementation.
+`history/surrogate allocation` and `population/archive search` are not direct ZO operators. A rejected buffer is a control variate only when the estimator conditions in the table hold; otherwise it is negative evidence. Report these layers with an explicit acquisition rule, selection rule, or variance measurement.
 
-To make the correspondence checkable, let $\mathcal O_i(s)=\mathcal O(s,z_i;\xi_i)$, $Y_i(s)=Y(s,z_i;\xi_i)$, and $\Psi_i(s)=\Psi(s,z_i;\xi_i)$, with $\widehat f_D(s)=m^{-1}\sum_{i=1}^{m}Y_i(s)$. Let $s\oplus\delta$ denote applying a legal edit $\delta$ to state $s$, let $\mathcal H_t$ be the history of states, observations, and scores before round $t$, and let $b$ be a component block declared before outcome observation. If the system provides a behavior descriptor, write it as $d_{\mathrm{beh}}(s,s')$, and write the candidate-lineage identifier as $\lambda(s)$. In classical ZO formulas, $u$ is a random numerical direction and $d_x$ is the dimension of the continuous parameterization; Harness-native states usually have neither object.
+### 5.3 Three design axes
 
-| Design axis | Mechanism family | Harness-native form (formal) | Correspondence to derivative-free optimization (formal) | Correspondence strength | Representative work |
-|---|---|---|---|---|---|
-| **Evidence construction** | single-state semantic proposal | $\delta_t=P_\phi(s_t,\{\mathcal O_i(s_t)\}_{i=1}^{m})$, with candidate $s_t\oplus\delta_t$; the edited state is not queried before proposal. | Interface correspondence only. Classical one-point ZO requires $\widehat g_{1p}=(d_x/\mu)Y(x+\mu u)u$ (or a baseline-corrected variant); this family has no numerical direction $u$ or step $\mu$, so it is not that estimator. | Interface | Reflexion, Voyager, ProTeGi, TextGrad |
-|  | batch evidence aggregation | $\overline{\Psi} _D(s)=\mathrm{Agg}(\{\Psi _i(s)\} _{i=1}^{m})$, with returns aggregated by $\widehat f _D(s)$. | Repeated noisy queries at one state: $\widehat f _m(s)=m^{-1}\sum_i y_i(s)$, with $\mathrm{Var}[\widehat f _m(s)]=\sigma^2/m$ under an i.i.d. assumption; tasks are not perturbation directions. | Interface | SkillOpt, SkillOpt-Lite, Trace2Skill, ExpeL, SkillForge |
-|  | paired state comparison | $\widehat\Delta_D(s,\delta)=m^{-1}\sum_i[Y(s\oplus\delta,z_i;\xi_i^+)-Y(s,z_i;\xi_i^-)]$. | The comparison skeleton of the two-point ZO estimator $\widehat g_{2p}=(d_x/(2\mu))[f(x+\mu u)-f(x-\mu u)]u$; without a continuous parameterization and constructible positive/negative perturbations, it is not a central difference. | Structural | SkillCAT, selective Trace2Skill paths |
-| **Search geometry** | block-local edit | $s'=s^{(b\leftarrow\delta_b)}$, where block $b$ is fixed before outcome observation. | Structurally corresponds to a block-coordinate update $x'=x+U_b d_b$; coordinates must be predefined and block separability is not assumed. | Structural | SkillAdaptor, AgentSquare, DemoEvolve, AlphaEvolve |
-|  | bounded local search | $s'\in\mathcal N_L(s)\cap\mathcal S_{\mathrm{feas}}$, for example $\mathcal N_L(s)=\{s':d_{\mathrm{syn}}(s,s')\le L\}$. | Resembles local direct search or a trust-region constraint $d^\top d\le\Delta_k^2$; if $d_{\mathrm{syn}}$ is not behavioral and no radius is updated, the correct label is bounded edit. | Structural | SkillOpt, SkillOpt-Lite, SkillForge, Self-Harness |
-| **Query allocation** | history or surrogate allocation | $a_{t+1}\in\arg\max_{a\in\mathcal A}\alpha_t(a\mid\mathcal H_t)$, where $a$ may denote a candidate, task, or rollout budget. | Corresponds to acquisition $x_{t+1}\in\arg\max_x\alpha_t(x\mid\mathcal H_t)$ or an explicit bandit allocation; without $\alpha_t$, it is only a history heuristic. | Strict* | ProTeGi, MIPROv2, AgentSquare, AdaEvolve |
-|  | population or archive search | $A _{t+1}=\mathrm{S}\mathrm{elect} _K(A _t\cup\mathrm{Offspring}(A _t))$, with selection based on $(\widehat f,d _{\mathrm{beh}},\lambda)$ when available. | Corresponds to an evolutionary update $P _{t+1}=\mathrm{S}\mathrm{elect}_K(P _t\cup\mathrm{Mutate}(P _t))$ or a Pareto archive; retention does not imply convergence or independent confirmation. | Structural | GEPA, Promptbreeder, DGM, AlphaEvolve, ShinkaEvolve, ThetaEvolve, MCE, Meta-Harness |
+Design axes are a reporting schema, not another ZO taxonomy:
 
-`*Strict` is conditional: it applies only when an explicit acquisition or bandit rule and its sampling assumptions are reported. Otherwise classify the method instance as structural or heuristic.
+| Design axis | What to record | Mechanism families |
+|---|---|---|
+| Evidence construction | Which runs are queried and how observations are aggregated | 1-point, multi-point, paired comparison |
+| Search geometry | Where an edit is formed and how its size is bounded | block-local, bounded edit |
+| Query allocation | How candidates, tasks, and rollout budgets are scheduled | history/surrogate, population/archive |
 
-The formulas are role-level formalizations; they do not make the discrete edit space continuous. An interface correspondence only states that objective information is obtained through execution. A structural correspondence additionally requires a representation-level edit unit, neighborhood, or retention rule. A strict correspondence requires the numerical parameterization, update rule, distance structure, and sampling assumptions of the classical operator. A classical term such as central difference, trust region, or bandit allocation is justified only when those conditions hold. No label alone implies a convergence rate, variance reduction, behavioral radius, or independent confirmation set.
+A system can use several mechanisms on all three axes. Rich traces do not imply parent/child comparison; an archive does not imply a reject gate; a diff cap does not define a behavioral radius.
 
-### 5.3 Structure and cost
+### 5.4 From SkillOpt-Lite to HarnessOpt
 
-The editable surface supplies the structure available to a search operator. Let $\mathcal S_{\mathrm{feas}}\subseteq\mathcal S_{\mathrm{edit}}$ denote states satisfying compile, type, interface, and write-path contracts. A static checker can test membership in this constructive subset, but it does not estimate $f_M$ or establish semantic correctness.
+The extension changes only three things:
 
-Component boundaries, allowlists, feature toggles, version snapshots, and deterministic replay can make local edits and paired comparisons executable. They do not imply that code is superior to text. Code supplies stronger structural constraints but also introduces coupling, side effects, and a larger rollback surface. A syntactic edit budget limits description space; it does not, without an additional behavioral metric, limit the change in execution behavior.
+1. the editable domain expands from one skill file to an explicit $\mathcal S_{\mathrm{edit}}$ containing prompts, memory, workflows, tools, or harness code;
+2. a file patch becomes a legal edit $\mathsf E(s,\delta)$ constrained by component boundaries, allowlists, interface contracts, and version snapshots; and
+3. trajectory exploration and proposal remain unchanged, while compile, smoke, and full-rollout persistence decisions remain in Section 6.
 
-Local search is meaningful only when the editable components and the initial state are specified before evaluation. A Round-0 scaffold is therefore part of the state definition, not evidence that the update improved performance.
-
-Harness queries have unequal cost. A useful accounting is
-
-```math
-C=n_{\mathrm{prop}}c_{\mathrm{prop}}+n_{\mathrm{static}}c_{\mathrm{static}}+n_{\mathrm{smoke}}c_{\mathrm{smoke}}+n_{\mathrm{task}}c_{\mathrm{task}}.
-```
-
-Static checks and smoke tests filter candidates before expensive task rollouts; they do not replace task-level confirmation. Search evidence and confirmation evidence must be counted separately. Paired evaluation is justified only when task, seed, and environment alignment produces sufficient covariance reduction to offset the additional execution cost; the paired label alone does not establish that reduction.
-
-The resulting design implications are regime-dependent. When task rollouts are expensive, the budget should be allocated explicitly among proposer depth, pre-evaluation filters, and candidate count. When execution noise is high and parent and child states can be aligned, paired evaluation may improve comparison efficiency. When behavioral change can be measured more directly than token or diff size, bounded search becomes a more informative control. These are testable hypotheses, not established properties of the listed systems.
-
-See [docs/zo-operator-map.md](docs/zo-operator-map.md) for the operator requirements and conservative labels.
-
+HarnessOpt is therefore the same query-based proposal loop over a wider state domain. Code exposes more structure but also more coupling and rollback surface; it changes implementation cost, not the ZO interface.
 ## 6. Confirmation and persistence: transition protocols
 
 This section uses PAC-style holdout reasoning as an analysis lens for one protocol, not as the name of the gate itself. The operational question is where the candidate can be accepted, rejected, or rolled back; the statistical question is whether the confirmation data remain independent of proposal and selection.
@@ -288,9 +278,9 @@ See [docs/pac-stability.md](docs/pac-stability.md) for the reachable-class, reus
 
 ## 7. Evaluation: report the trajectory
 
-The correct unit of evaluation is an **evolution trajectory**, not only the final version score. A trajectory report should make five groups of fields visible:
+The correct unit of evaluation is an **evolution trajectory**, not only the final version score. [Harness Updating Is Not Harness Benefit](https://arxiv.org/abs/2605.30621) separates the ability to produce useful persistent updates from the ability of a task-solving agent to use those updates, so a trajectory report should measure both update quality and downstream harness interaction.
 
-[Harness Updating Is Not Harness Benefit](https://arxiv.org/abs/2605.30621) separates the ability to produce useful persistent updates from the ability of a task-solving agent to use those updates. A trajectory report should therefore measure both update quality and downstream harness interaction.
+A trajectory report should make five groups of fields visible:
 
 | Field group | Minimum content |
 |---|---|
@@ -342,7 +332,7 @@ A registry should record versions, dependencies, capabilities, permissions, stat
 
 At runtime, skills are replaceable inputs. Only a recorded, versioned, and gated skill should impose persistent cross-task constraints; catalogue visibility and on-demand loading should be logged.
 
-Append-only logs should cover model-visible inputs, tool calls, subagents, context injection, evaluator outcomes, state snapshots, cleanup, and data roles. They support replay and attribution. Memory and skill stores also need compression, expiry, merge, deletion, and recovery rules so that accumulated entries do not silently change routing or behavior.
+Append-only logs should cover model-visible inputs, tool calls, subagents, context injection, evaluator outcomes, state snapshots, cleanup, and data roles; they are the basis for replay and attribution. Memory and skill stores also need compression, expiry, merge, deletion, and recovery rules so that accumulated entries do not silently change routing or behavior.
 
 ### 8.2 Endpoint–edge–cloud: allocate work by confirmation cost
 
@@ -364,7 +354,7 @@ Long-term evaluation should include maintainability, ownership, migration, compa
 
 Retain failed attempts as searchable but inactive records. Each skill or Agent Note should carry scope, evidence source, counterexamples, alternatives, and state history; compression and merging should transfer all live contracts and coverage gaps. At scale, use semantic retrieval, hierarchical catalogues, or task-conditioned subsets, and log routing decisions.
 
-Logs support attribution but do not identify its cause automatically. Component-level attribution is needed before traces can reliably produce local proposals or decide whether a component should be edited, downweighted, expired, or removed.
+Logs supply the material for attribution, but they do not decide on their own whether a failure came from the skill content, non-compliance by the model, environment drift, or wrong skill routing. Component-level attribution is needed before traces can reliably produce local proposals or decide whether a component should be edited, downweighted, expired, or removed.
 
 ### 8.4 Model–harness co-design and human authorization
 
@@ -374,7 +364,7 @@ The model may generate candidates autonomously, while durable write permission r
 
 ### 8.5 Open questions
 
-The main unresolved questions are four connected ones:
+Four connected questions remain open:
 
 1. Under weak or fuzzy evaluators, confirmation-set reuse, and task drift, how can multi-round promotion retain auditable independence and confidence?
 2. How should context, skill, and memory routing, compression, forgetting, and negative-result retention be managed over long horizons without losing verified behavior?

@@ -27,27 +27,28 @@ The repository therefore separates:
 - semantic side information used to form an edit; and
 - confirmation evidence used to decide persistence.
 
-## 2. Labels and their limits
+## 2. Direct operator map
 
-| Repository label | Classical requirement | HarnessOpt role | Where the analogy stops |
+The main comparison follows the mechanism families in SkillOpt-Lite. Extending from SkillOpt to HarnessOpt changes the editable domain from one skill file to an explicit harness state; it does not create a new ZO algorithm.
+
+| ZO mechanism family | Harness-native role | Classical requirement | Safe repository label |
 |---|---|---|---|
-| one-point | evaluate one perturbed numeric point | revise from one scored rollout or one candidate | no random direction or gradient estimate is implied |
-| batch evidence | average several noisy observations | aggregate failures or critiques across tasks | tasks are samples, not perturbation directions |
-| contrastive diagnosis | compare paired evaluations | compare success/failure traces or alternatives | no $s+\mu u$ and $s-\mu u$ symmetry is implied |
-| trace-informed proposal | use observation details beyond a scalar | condition an edit on traces, errors, or critiques | semantic feedback is not a derivative |
-| history-conditioned proposal | adapt from previous observations | condition on earlier states, scores, or feedback | history dependence is not numerical momentum |
-| localized edit | change one coordinate or block | patch a named entry, file, module, node, or skill | the block must be defined before outcome observation |
-| bounded edit | optimize within a trust region | constrain tokens, files, diff size, or operations | syntactic size need not bound behavioral distance |
-| adaptive schedule | set step size or radius from progress | schedule candidate count, budget, or edit scope | the progress signal can be noisy and selection-biased |
-| surrogate-model search | fit a model of the objective | Bayesian optimization or another response model | ordinary LLM critique is not automatically a surrogate |
-| population / archive | retain and select several candidates | evolutionary selection, Pareto archive, or tree search | retention alone gives no convergence or confirmation result |
-| control-variate role | use correlated information to reduce estimator variance | rejected edits, baselines, or paired replay | variance reduction must be specified and measured |
-| boundary — first-order / RL / trained policy | the method changes representation or objective | real gradient, RL, or trained-policy component | not a ZO analogy for the complete method |
+| ZO oracle | execute $s$ and observe $Y(s,z;\xi)$ and $\Psi(s,z;\xi)$ | query a black-box objective $f(x)$ | `ZO interface` |
+| 1-point estimate | propose an edit from one scored trace | evaluate a numerical perturbation $x+\mu u$ and form a direction-scaled estimator | `single-trace proposal`; not an estimator without $u$ and $\mu$ |
+| multi-point / mini-batch | aggregate tasks or seeds at the same state | evaluate several perturbation directions $u_i$ | `batch evidence`; sample averaging unless perturbations are constructed |
+| central difference | compare two deployed states on aligned tasks | evaluate reversible symmetric perturbations $x+\mu u$ and $x-\mu u$ | `paired comparison`; central difference only when symmetry exists |
+| coordinate descent | edit one declared component or block | choose a coordinate before evaluation and update only that coordinate | `block-local edit` |
+| trust region | constrain a candidate by diff, token, file, or path budget | define a behavior-linked distance, update the radius, and use an acceptance rule | `bounded edit`; trust region only when all requirements hold |
+| control variate / historical baseline | use $\widehat q_t^{\mathrm{cv}}=\widehat q_t-c_t+\mathbb E[c_t]$ with a named correlated baseline | require a valid baseline and measured variance reduction; a rejected buffer alone is not sufficient | `control-variate baseline`; otherwise `negative evidence` |
 
-Use a classical term literally only when the implementation meets its mathematical requirements. Otherwise use the repository label as a conservative role description.
+Two mechanisms are reported separately because they are not direct ZO operators in this mapping:
 
-The correspondence has three levels. An interface correspondence means that objective information is obtained through execution. A structural correspondence additionally requires a representation-level edit unit or retention rule. A strict correspondence requires the numerical parameterization, update rule, and sampling assumptions of the classical operator. None of these labels supplies a convergence rate, a variance-reduction result, a behavioral radius, or an independent confirmation set.
+- `history/surrogate allocation` schedules the next candidate, task, or rollout budget;
+- `population/archive search` retains and selects multiple candidates.
 
+Rejected buffers and historical failures enter the control-variate row only when a correlated baseline and measured variance reduction are reported; otherwise they are negative evidence.
+
+The formulas in the README are role-level comparisons. They do not transfer a convergence rate, a variance-reduction result, a behavioral radius, or an independent confirmation set to a HarnessOpt system.
 ## 3. Surface structure determines implementability
 
 | Editable surface | Structure available before evaluation | Defensible operation |
