@@ -1,6 +1,6 @@
 <!-- Core reading list for model-external harness optimization, organized by editable surface, proposal mechanism, and confirmation protocol. -->
 
-# Awesome Harness Optimization
+# Awesome Harness Self-Evolving
 
 **A reading list for Harness Optimization (HarnessOpt): how run-time evidence changes the software around a frozen language model, and how a candidate becomes persistent state.**
 
@@ -391,7 +391,7 @@ Four connected questions remain open:
   title        = {A Zeroth-Order and PAC View of Agent Harness Optimization},
   author       = {Wei, Chuyang and Shen, Yifei},
   year         = {2026},
-  howpublished = {\url{https://github.com/Weichy9218/Awesome-Harness-Optimization}}
+  howpublished = {\url{https://github.com/Weichy9218/Awesome-Harness-Self-Evolving}}
 }
 ~~~
 

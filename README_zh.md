@@ -1,6 +1,6 @@
 <!-- 面向模型外部 Harness 优化的核心阅读清单，按可编辑面、提议机制和确认协议组织。 -->
 
-# Awesome Harness Optimization
+# Awesome Harness Self-Evolving
 
 **Harness Optimization（HarnessOpt）阅读清单：运行证据如何修改冻结语言模型周围的软件，以及候选如何成为持久状态。**
 
@@ -392,7 +392,7 @@ append-only 日志应覆盖模型可见输入、工具调用、子任务、上�
   title        = {A Zeroth-Order and PAC View of Agent Harness Optimization},
   author       = {Wei, Chuyang and Shen, Yifei},
   year         = {2026},
-  howpublished = {\url{https://github.com/Weichy9218/Awesome-Harness-Optimization}}
+  howpublished = {\url{https://github.com/Weichy9218/Awesome-Harness-Self-Evolving}}
 }
 ~~~
 
